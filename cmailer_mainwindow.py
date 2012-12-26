@@ -23,7 +23,6 @@ from ckit.ckit_const import *
 import cmailer_filelist
 import cmailer_isearch
 import cmailer_archiver
-import cmailer_statusbar
 import cmailer_msgbox
 import cmailer_listwindow
 import cmailer_consolewindow
@@ -41,11 +40,14 @@ import cmailer_wallpaper
 import cmailer_misc
 import cmailer_filecmp
 import cmailer_native
-import cmailer_resource
 import cmailer_usernamespace
 import cmailer_error
 import cmailer_debug
 """
+
+import cmailer_resource
+import cmailer_statusbar
+
 
 """
 MessageBox = cmailer_msgbox.MessageBox
@@ -2295,11 +2297,6 @@ class MainWindow( ckit.Window ):
             ini_version = self.ini.get("GLOBAL","version")
         except:
             pass
-        
-        # 古い utf8 でない ini ファイルのエンコーディングを変換する
-        if ini_version < "1.65":
-            import cmailer_consistency
-            cmailer_consistency.convertIniEncoding( self.ini, "mbcs", "utf8" )
         
         try:
             self.ini.add_section("GLOBAL")

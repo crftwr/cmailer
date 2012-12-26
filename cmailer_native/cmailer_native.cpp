@@ -11,11 +11,11 @@
 
 #include "cmailer_native.h"
 
-//using namespace cmemo;
+//using namespace cmailer;
 
 //-----------------------------------------------------------------------------
 
-#define MODULE_NAME "cmemo_native"
+#define MODULE_NAME "cmailer_native"
 static PyObject * Error;
 
 //-----------------------------------------------------------------------------
@@ -395,7 +395,7 @@ static PyObject * _chooseColor( PyObject * self, PyObject * args )
 	return pyret;
 }
 
-static PyMethodDef cmemo_native_funcs[] =
+static PyMethodDef cmailer_native_funcs[] =
 {
     { "findFile", (PyCFunction)_findFile, METH_VARARGS|METH_KEYWORDS, "" },
     { "setFileTime", (PyCFunction)_setFileTime, METH_VARARGS, "" },
@@ -409,7 +409,7 @@ extern "C" void __stdcall initcmailer_native(void)
 {
     PyObject *m, *d;
 
-    m = Py_InitModule3( MODULE_NAME, cmemo_native_funcs, "cmemo_native module." );
+    m = Py_InitModule3( MODULE_NAME, cmailer_native_funcs, "cmailer_native module." );
 
     d = PyModule_GetDict(m);
 
