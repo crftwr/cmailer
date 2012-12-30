@@ -78,7 +78,7 @@ def _forceAbort():
                 message += "    %s\n" % (line.strip())
         message += "\n"
 
-    ctypes.windll.user32.MessageBoxW( 0, message, cfiler_resource.cfiler_appname, 0 )
+    ctypes.windll.user32.MessageBoxW( 0, message, cmailer_resource.cmailer_appname, 0 )
 
     os.abort()
 

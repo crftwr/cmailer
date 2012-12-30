@@ -20,7 +20,6 @@ import ckit
 from ckit.ckit_const import *
 
 """
-import cmailer_filelist
 import cmailer_isearch
 import cmailer_archiver
 import cmailer_msgbox
@@ -40,13 +39,14 @@ import cmailer_wallpaper
 import cmailer_misc
 import cmailer_filecmp
 import cmailer_native
-import cmailer_usernamespace
 import cmailer_error
-import cmailer_debug
 """
 
+import cmailer_account
 import cmailer_resource
 import cmailer_statusbar
+import cmailer_usernamespace
+import cmailer_debug
 
 
 """
@@ -196,19 +196,15 @@ PAINT_FOCUSED            = PAINT_FOCUSED_LOCATION | PAINT_FOCUSED_HEADER | PAINT
 PAINT_UPPER              = PAINT_LEFT | PAINT_RIGHT | PAINT_VERTICAL_SEPARATOR
 PAINT_ALL                = PAINT_LEFT | PAINT_RIGHT | PAINT_VERTICAL_SEPARATOR | PAINT_LOG | PAINT_STATUS_BAR
 
-## ファイラのメインウインドウ
+## メーラのメインウインドウ
 #
-#  ファイラの主な機能を実現しているクラスです。\n\n
+#  メーラの主な機能を実現しているクラスです。\n\n
 #  設定ファイル config.py の configure に渡される window 引数は、MainWindow クラスのオブジェクトです。
 #
 class MainWindow( ckit.Window ):
 
     FOCUS_LEFT  = 0
     FOCUS_RIGHT = 1
-
-    image_file_ext_list = ( ".bmp", ".gif", ".jpg", ".jpeg", ".png", ".psd", ".tga", ".tif", ".tiff" )
-    music_file_ext_list = ( ".mp3", ".wma", ".wav" )
-    zip_file_ext_list = ( ".zip", ".jar", ".apk" )
 
     def __init__( self, config_filename, ini_filename, debug=False, profile=False ):
     
@@ -285,13 +281,22 @@ class MainWindow( ckit.Window ):
         self.commandline_edit = None
         self.progress_bar = None
 
-        self.bookmark = cmailer_bookmark.Bookmark()
-        self.bookmark.load( self.ini, "BOOKMARK" )
+        #self.bookmark = cmailer_bookmark.Bookmark()
+        #self.bookmark.load( self.ini, "BOOKMARK" )
+
+        self.account = cmailer_account.Account(
+            cmailer_account.Pop3Receiver(
+                    "pop.gmail.com", 995,
+                    self.ini.get( "ACCOUNT", "username" ), self.ini.get( "ACCOUNT", "password" )
+            ),
+            None,
+        )
 
         class Pane:
             pass
 
         self.left_pane = Pane()
+        """
         self.left_pane.history = History()
         self.left_pane.history.load( self.ini, "LEFTPANE" )
         self.left_pane.found_prefix = u""
@@ -301,8 +306,10 @@ class MainWindow( ckit.Window ):
         self.left_pane.scroll_info = ckit.ScrollInfo()
         self.left_pane.cursor = 0
         self.left_pane.footer_paint_hook = None
+        """
 
         self.right_pane = Pane()
+        """
         self.right_pane.history = History()
         self.right_pane.history.load( self.ini, "RIGHTPANE" )
         self.right_pane.found_prefix = u""
@@ -312,6 +319,7 @@ class MainWindow( ckit.Window ):
         self.right_pane.scroll_info = ckit.ScrollInfo()
         self.right_pane.cursor = 0
         self.right_pane.footer_paint_hook = None
+        """
 
         self.log_pane = Pane()
         self.log_pane.log = Log()
@@ -319,6 +327,7 @@ class MainWindow( ckit.Window ):
         self.log_pane.selection = [ [ 0, 0 ], [ 0, 0 ] ]
 
         self.keymap = ckit.Keymap()
+        """
         self.jump_list = []
         self.filter_list = []
         self.select_filter_list = []
@@ -337,8 +346,9 @@ class MainWindow( ckit.Window ):
         self.pattern_history.load( self.ini, "PATTERN" )
         self.search_history = cmailer_history.History()
         self.search_history.load( self.ini, "SEARCH" )
+        """
         
-        self.launcher = cmailer_commandline.commandline_Launcher(self)
+        #self.launcher = cmailer_commandline.commandline_Launcher(self)
 
         self.keydown_hook = None
         self.char_hook = None
@@ -347,8 +357,6 @@ class MainWindow( ckit.Window ):
         
         self.mouse_click_info = None
 
-        self.musicplayer = None
-        
         self.migemo = None
 
         self.task_queue_stack = []
@@ -358,7 +366,6 @@ class MainWindow( ckit.Window ):
         
         self.setTimer( self.onTimerJob, 10 )
         self.setTimer( self.onTimerSyncCall, 10 )
-        self.setTimer( self.onTimerAutoRefresh, 100 )
 
         try:
             self.createThemePlane()
@@ -377,8 +384,8 @@ class MainWindow( ckit.Window ):
         self.paint()
 
     def destroy(self):
-        self.left_pane.file_list.destroy()
-        self.right_pane.file_list.destroy()
+        #self.left_pane.file_list.destroy()
+        #self.right_pane.file_list.destroy()
         cmailer_debug.disableBlockDetector()
         ckit.Window.destroy(self)
 
@@ -559,7 +566,7 @@ class MainWindow( ckit.Window ):
     #  @param env               サブプロセスの環境変数
     #  @param enable_cancel     True:ESCキーでキャンセルする  False:ESCキーでキャンセルしない
     #
-    #  任意のコンソールプログラムを、ファイラのサブプロセスとして実行し、そのプログラムの出力を、ログペインにリダイレクトします。\n\n
+    #  任意のコンソールプログラムを、メーラのサブプロセスとして実行し、そのプログラムの出力を、ログペインにリダイレクトします。\n\n
     #
     #  引数 cmd には、サブプロセスとして実行するプログラムと引数をリスト形式で渡します。\n
     #  例:  [ "subst", "R:", "//remote-machine/public/" ]
@@ -624,14 +631,6 @@ class MainWindow( ckit.Window ):
         else:    
             if comment and self.task_queue_stack[-1].numItems()>0:
                 self.setStatusMessage( u"タスクを予約しました : %s" % comment, 3000 )
-
-        # バックグラウンド処理中、lister が破棄されないようにコピーする
-        left_lister, tmp = self.leftFileList().getLister().getCopy("")
-        right_lister, tmp = self.rightFileList().getLister().getCopy("")
-        def destroyLister(job_item):
-            left_lister.destroy()
-            right_lister.destroy()
-        job_item.finished_func_list += [ destroyLister ]
 
         self.task_queue_stack[-1].enqueue(job_item)
 
@@ -1901,6 +1900,7 @@ class MainWindow( ckit.Window ):
                 option |= [ PAINT_LEFT_FOOTER, PAINT_RIGHT_FOOTER ][self.focus]
 
         if option & PAINT_LEFT:
+            """
             if self.focus==MainWindow.FOCUS_LEFT:
                 cursor = self.left_pane.cursor
             else:
@@ -1923,8 +1923,10 @@ class MainWindow( ckit.Window ):
                     self.left_pane.footer_paint_hook( x, y+height-1, width, 1, self.left_pane.file_list )
                 else:
                     self._paintFileListFooterInfo( x, y+height-1, width, 1, self.left_pane.file_list )
+            """
 
         if option & PAINT_RIGHT:
+            """
             if self.focus==MainWindow.FOCUS_RIGHT:
                 cursor = self.right_pane.cursor
             else:
@@ -1947,6 +1949,7 @@ class MainWindow( ckit.Window ):
                     self.right_pane.footer_paint_hook( x, y+height-1, width, 1, self.right_pane.file_list )
                 else:
                     self._paintFileListFooterInfo( x, y+height-1, width, 1, self.right_pane.file_list )
+            """
 
         if option & PAINT_VERTICAL_SEPARATOR:
             self._paintVerticalSeparator( self.leftPaneWidth(), 0, 1, self.upperPaneHeight() )
@@ -2160,7 +2163,6 @@ class MainWindow( ckit.Window ):
         self.keymap[ "S-A" ] = self.command_SelectAll
         self.keymap[ "S-Home" ] = self.command_SelectAll
         self.keymap[ "C" ] = self.command_Copy
-        self.keymap[ "S-C" ] = self.command_CopyInput
         self.keymap[ "E" ] = self.command_Edit
         self.keymap[ "S-E" ] = self.command_EditInput
         self.keymap[ "F" ] = self.command_IncrementalSearch
@@ -2232,11 +2234,11 @@ class MainWindow( ckit.Window ):
         ]
 
         self.compare_list = [
-            ( u"F : 気にしない",                    cmailer_filelist.compare_Default() ),
-            ( u"S : サイズが同じ",                  cmailer_filelist.compare_Default(cmp_size=0) ),
-            ( u"T : タイムスタンプが同じ",          cmailer_filelist.compare_Default(cmp_timestamp=0) ),
-            ( u"A : サイズ/タイムスタンプが同じ",   cmailer_filelist.compare_Default(cmp_size=0,cmp_timestamp=0) ),
-            ( u"M : 選択されている",                cmailer_filelist.compare_Selected() ),
+            #( u"F : 気にしない",                    cmailer_filelist.compare_Default() ),
+            #( u"S : サイズが同じ",                  cmailer_filelist.compare_Default(cmp_size=0) ),
+            #( u"T : タイムスタンプが同じ",          cmailer_filelist.compare_Default(cmp_timestamp=0) ),
+            #( u"A : サイズ/タイムスタンプが同じ",   cmailer_filelist.compare_Default(cmp_size=0,cmp_timestamp=0) ),
+            #( u"M : 選択されている",                cmailer_filelist.compare_Selected() ),
         ]
         
         self.compare_tool_list = [
@@ -2245,39 +2247,40 @@ class MainWindow( ckit.Window ):
         ]
 
         self.sorter_list = [
-            ( u"F : ファイル名",     cmailer_filelist.sorter_ByName(),       cmailer_filelist.sorter_ByName( order=-1 ) ),
-            ( u"E : 拡張子",         cmailer_filelist.sorter_ByExt(),        cmailer_filelist.sorter_ByExt( order=-1 ) ),
-            ( u"S : サイズ",         cmailer_filelist.sorter_BySize(),       cmailer_filelist.sorter_BySize( order=-1 ) ),
-            ( u"T : タイムスタンプ", cmailer_filelist.sorter_ByTimeStamp(),  cmailer_filelist.sorter_ByTimeStamp( order=-1 ) ),
+            #( u"F : ファイル名",     cmailer_filelist.sorter_ByName(),       cmailer_filelist.sorter_ByName( order=-1 ) ),
+            #( u"E : 拡張子",         cmailer_filelist.sorter_ByExt(),        cmailer_filelist.sorter_ByExt( order=-1 ) ),
+            #( u"S : サイズ",         cmailer_filelist.sorter_BySize(),       cmailer_filelist.sorter_BySize( order=-1 ) ),
+            #( u"T : タイムスタンプ", cmailer_filelist.sorter_ByTimeStamp(),  cmailer_filelist.sorter_ByTimeStamp( order=-1 ) ),
         ]
 
         self.association_list = [
         ]
         
         self.itemformat_list = [
-            ( u"1 : 全て表示 : filename  .ext  99.9K YY/MM/DD HH:MM:SS",     cmailer_filelist.itemformat_Name_Ext_Size_YYMMDD_HHMMSS ),
-            ( u"2 : 秒を省略 : filename  .ext  99.9K YY/MM/DD HH:MM",        cmailer_filelist.itemformat_Name_Ext_Size_YYMMDD_HHMM ),
-            ( u"0 : 名前のみ : filename.ext",                                cmailer_filelist.itemformat_NameExt ),
+            #( u"1 : 全て表示 : filename  .ext  99.9K YY/MM/DD HH:MM:SS",     cmailer_filelist.itemformat_Name_Ext_Size_YYMMDD_HHMMSS ),
+            #( u"2 : 秒を省略 : filename  .ext  99.9K YY/MM/DD HH:MM",        cmailer_filelist.itemformat_Name_Ext_Size_YYMMDD_HHMM ),
+            #( u"0 : 名前のみ : filename.ext",                                cmailer_filelist.itemformat_NameExt ),
         ]
         
-        self.itemformat = cmailer_filelist.itemformat_Name_Ext_Size_YYMMDD_HHMMSS
+        #self.itemformat = cmailer_filelist.itemformat_Name_Ext_Size_YYMMDD_HHMMSS
 
         self.commandline_list = [
-            self.launcher,
-            cmailer_commandline.commandline_Int32Hex(),
-            cmailer_commandline.commandline_Calculator(),
+            #self.launcher,
+            #cmailer_commandline.commandline_Int32Hex(),
+            #cmailer_commandline.commandline_Calculator(),
         ]
-        
+
+        """
         self.launcher.command_list = [
             ( u"Reload",           self.command_Reload ),
             ( u"About",            self.command_About ),
             ( u"SplitFile",        self.command_SplitFile ),
-            ( u"JoinFile",         self.command_JoinFile ),
             ( u"Wallpaper",        self.command_Wallpaper ),
             ( u"_MemoryStat",      self.command_MemoryStat ),
             ( u"_RefererTree",     self.command_RefererTree ),
             ( u"NetworkPlaceTest", self.command_NetworkPlaceTest ),
         ]
+        """
         
         cmailer_usernamespace.reload( self.config_filename )
         cmailer_usernamespace.call("configure",self)
@@ -2394,6 +2397,11 @@ class MainWindow( ckit.Window ):
             pass
 
         try:
+            self.ini.add_section("ACCOUNT")
+        except ConfigParser.DuplicateSectionError:
+            pass
+
+        try:
             self.ini.add_section("MISC")
         except ConfigParser.DuplicateSectionError:
             pass
@@ -2469,6 +2477,11 @@ class MainWindow( ckit.Window ):
 
         if not self.ini.has_option( "MUSIC", "restore" ):
             self.ini.set( "MUSIC", "restore", "0" )
+
+        if not self.ini.has_option( "ACCOUNT", "username" ):
+            self.ini.set( "ACCOUNT", "username", "" )
+        if not self.ini.has_option( "ACCOUNT", "password" ):
+            self.ini.set( "ACCOUNT", "password", "" )
 
         if not self.ini.has_option( "MISC", "default_keymap" ):
             self.ini.set( "MISC", "default_keymap", "106" )
@@ -2573,16 +2586,7 @@ class MainWindow( ckit.Window ):
 
         print cmailer_resource.startupString()
 
-        # ネットワークアップデートのためのバージョンチェック
-        check_frequency = self.ini.getint( "UPDATE", "check_frequency" )
-        if check_frequency>0:
-            last_checked_date = self.ini.get( "UPDATE", "last_checked_date" )
-            now = time.localtime()
-            now = "%04d%02d%02d%02d%02d%02d" % now[0:6]
-            if int(now) - int(last_checked_date) > check_frequency:
-                self.ini.set( "UPDATE", "last_checked_date", now )
-                self.command_NetworkUpdate()
-
+        """
         # 左ペインの初期位置
         if left_location:
             location = left_location
@@ -2610,19 +2614,8 @@ class MainWindow( ckit.Window ):
             self.jumpLister( self.right_pane, cmailer_filelist.lister_Default(self,location), raise_error=True )
         except:
             self.jumpLister( self.right_pane, cmailer_filelist.lister_Default(self,os.getcwd()) )
+        """
 
-        # 音楽プレイヤの復元
-        if self.ini.getint( "MUSIC", "restore" ):
-
-            if self.musicplayer==None:
-                self.musicplayer = cmailer_musicplayer.MusicPlayer(self)
-
-            self.musicplayer.load( self.ini, "MUSIC" )
-
-            if len(self.musicplayer.getPlayList()[0])==0:
-                self.musicplayer.destroy()
-                self.musicplayer = None
-        
     #--------------------------------------------------------------------------
 
     def hotkey_Activate(self):
@@ -3033,7 +3026,7 @@ class MainWindow( ckit.Window ):
         self.updateThemePosSize()
         self.paint( PAINT_UPPER )
 
-    ## カーソル位置のアイテムに対して、ファイラ内で関連付けられたデフォルトの動作を実行する
+    ## カーソル位置のアイテムに対して、メーラ内で関連付けられたデフォルトの動作を実行する
     #
     #  以下の順番で処理されます。
     #
@@ -3302,7 +3295,7 @@ class MainWindow( ckit.Window ):
 
     ## 選択されているアイテムを削除する(デフォルトの方法で)
     #
-    #  内骨格では、ファイラに内蔵された削除機能と、OSのゴミ箱を使った削除を選択することができます。
+    #  内骨格では、メーラに内蔵された削除機能と、OSのゴミ箱を使った削除を選択することができます。
     #  command_Delete ではデフォルトに設定された方法で削除を実行します。
     #  削除のデフォルト動作は、設定メニュー2で変更することが出来ます。
     #
@@ -3316,7 +3309,7 @@ class MainWindow( ckit.Window ):
 
     ## 選択されているアイテムを削除する(デフォルトではない方法で)
     #
-    #  内骨格では、ファイラに内蔵された削除機能と、OSのゴミ箱を使った削除を選択することができます。
+    #  内骨格では、メーラに内蔵された削除機能と、OSのゴミ箱を使った削除を選択することができます。
     #  command_Delete2 ではデフォルトではない方法で削除を実行します。
     #  削除のデフォルト動作は、設定メニュー2で変更することが出来ます。
     #
@@ -5399,7 +5392,7 @@ class MainWindow( ckit.Window ):
 
         self.paint(PAINT_FOCUSED)
 
-    ## ファイラを終了する
+    ## メーラを終了する
     def command_Quit(self):
 
         if self.ini.getint("MISC","confirm_quit"):
@@ -6544,120 +6537,7 @@ class MainWindow( ckit.Window ):
             self.musicplayer = None
             self.setStatusMessage( u"Music : 停止", 3000 )
 
-    ## ネットワークアップデートする
-    def command_NetworkUpdate(self):
-
-        import urllib
-        import hashlib
-
-        cmailer_dirname = ckit.getAppExePath()
-        version_file_url_test = os.path.join(cmailer_dirname,"version.txt")
-        version_file_url = "http://dl.dropbox.com/u/16245545/cmailer/version.txt"
-
-        class Status : pass
-        status = Status()
-        status.new_version_info = None
-
-        def jobVersionCheck(job_item):
-
-            def checkNewerVersionExist( job_item, url, silent ):
-
-                try:
-                    if url.startswith("http:"):
-                        urlopener = urllib.FancyURLopener()
-                        # プロキシのキャッシュを使わないように
-                        urlopener.addheader("Pragma","no-cache") 
-                        fd = urlopener.open(url)                        
-                    else:
-                        fd = open(url,"rb")
-                    buf = fd.read()
-                    fd.close()
-                except:
-                    if not silent : print u"Error : バージョンチェックに失敗しました"
-                    return None
-
-                lines = buf.splitlines()
-                re_pattern = re.compile( "(.*)=(.*)" )
-                result = {}
-                for line in lines:
-                    re_result = re_pattern.match(line)
-                    if re_result and re_result.group(0)==line:
-                        result[ re_result.group(1).strip() ] = re_result.group(2).strip()
-
-                if result["version"] > cmailer_resource.cmailer_version:
-                    return result
-                else:
-                    if not silent : print u"使用している%sは最新のバージョンです.\n" % (cmailer_resource.cmailer_appname,)
-                    return None
-
-            if os.path.exists(version_file_url_test):
-                status.new_version_info = checkNewerVersionExist( job_item, version_file_url_test, silent=True )
-            else:
-                status.new_version_info = checkNewerVersionExist( job_item, version_file_url, silent=False )
-
-        def jobVersionCheckFinished(job_item):
-
-            if self.isQuitting() : return
-
-            if status.new_version_info:
-                result = cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_YESNO, u"アップデートのおしらせ", u"新しいバージョンの%sにアップデートしますか？(ver %s)" % (cmailer_resource.cmailer_appname,status.new_version_info["version"]) )
-                if result!=MessageBox.RESULT_YES : return
-
-                job_item = ckit.JobItem( jobUpdate, jobUpdateFinished )
-                self.taskEnqueue( job_item, create_new_queue=False )
-
-        def jobUpdate(job_item):
-        
-            import tempfile
-
-            def downloadUpdateFile( job_item, url, md5sum ):
-
-                print u"アップデータをダウンロード中:"
-
-                installer_dirname = tempfile.mkdtemp(prefix="cmailer_setup_")
-                installer_filename = os.path.join( installer_dirname, os.path.basename(url) )
-                fd_dst = open( installer_filename, "wb" )
-                md5 = hashlib.md5()
-
-                if url.startswith("http:"):
-                    fd_src = urllib.urlopen(url)
-                else:
-                    fd_src = open(url,"rb")
-
-                while True:
-                    buf = fd_src.read( 128 * 1024 )
-                    if not buf: break
-                    fd_dst.write(buf)
-                    md5.update(buf)
-                    sys.stdout.write(".")
-                print ""
-
-                fd_src.close()
-                fd_dst.close()
-                
-                if md5.hexdigest()!=md5sum:
-                    print u"Error : アップデータが正常にダウンロードできませんでした."
-                    return None
-
-                return installer_filename
-
-            installer_filename = downloadUpdateFile( job_item, status.new_version_info["url"], status.new_version_info["md5"] )
-            if not installer_filename:
-                return
-            
-            print u"アップデータを起動します.\n"
-
-            ckit.shellExecute( None, None, installer_filename, u"", u"" )
-
-            print u"Done.\n"
-
-        def jobUpdateFinished( job_item ):
-            self.quit()
-
-        job_item = ckit.JobItem( jobVersionCheck, jobVersionCheckFinished )
-        self.taskEnqueue(job_item)
-
-    ## ファイラをもうひとつ起動する
+    ## メーラをもうひとつ起動する
     def command_DuplicateCmailer(self):
         argv0 = ckit.getArgv()[0]
         if argv0.endswith(".py"):
@@ -6702,7 +6582,7 @@ class MainWindow( ckit.Window ):
         self.configure()
         print u"設定スクリプトをリロードしました.\n"
 
-    ## ファイラのバージョン情報を出力する
+    ## メーラのバージョン情報を出力する
     def command_About(self):
         print cmailer_resource.startupString()
 
