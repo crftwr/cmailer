@@ -46,6 +46,8 @@ import cmailer_account
 import cmailer_resource
 import cmailer_statusbar
 import cmailer_usernamespace
+import cmailer_commandline
+import cmailer_history
 import cmailer_debug
 
 
@@ -340,15 +342,17 @@ class MainWindow( ckit.Window ):
         self.editor = u"notepad.exe"
         self.diff_editor = None
         self.commandline_list = []
+        """
         self.commandline_history = cmailer_history.History(1000)
         self.commandline_history.load( self.ini, "COMMANDLINE" )
+        """
         self.pattern_history = cmailer_history.History()
         self.pattern_history.load( self.ini, "PATTERN" )
         self.search_history = cmailer_history.History()
         self.search_history.load( self.ini, "SEARCH" )
         """
         
-        #self.launcher = cmailer_commandline.commandline_Launcher(self)
+        self.launcher = cmailer_commandline.commandline_Launcher(self)
 
         self.keydown_hook = None
         self.char_hook = None
@@ -835,8 +839,10 @@ class MainWindow( ckit.Window ):
                 return True
 
         selected = 0
+        """
         if pane.file_list.selected():
             selected = 1
+        """
 
         try:
             func = self.keymap.table[ ckit.KeyEvent(vk,mod,extra=selected) ]
@@ -2265,12 +2271,11 @@ class MainWindow( ckit.Window ):
         #self.itemformat = cmailer_filelist.itemformat_Name_Ext_Size_YYMMDD_HHMMSS
 
         self.commandline_list = [
-            #self.launcher,
-            #cmailer_commandline.commandline_Int32Hex(),
-            #cmailer_commandline.commandline_Calculator(),
+            self.launcher,
+            cmailer_commandline.commandline_Int32Hex(),
+            cmailer_commandline.commandline_Calculator(),
         ]
 
-        """
         self.launcher.command_list = [
             ( u"Reload",           self.command_Reload ),
             ( u"About",            self.command_About ),
@@ -2280,7 +2285,6 @@ class MainWindow( ckit.Window ):
             ( u"_RefererTree",     self.command_RefererTree ),
             ( u"NetworkPlaceTest", self.command_NetworkPlaceTest ),
         ]
-        """
         
         cmailer_usernamespace.reload( self.config_filename )
         cmailer_usernamespace.call("configure",self)
