@@ -1,7 +1,7 @@
 ﻿
 cmailer_appname = u"CraftMailer"
 cmailer_dirname = u"CraftMailer"
-cmailer_version = "2.20"
+cmailer_version = "1.00"
 
 _startup_string_fmt = u"""\
 %s version %s:
