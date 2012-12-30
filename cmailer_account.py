@@ -1,4 +1,4 @@
-import email
+import email.parser
 import poplib
 
 #--------------------------------------------------------------------
@@ -31,6 +31,23 @@ class Sender:
     def send(self):
         pass
 
+class Email:
+
+    def __init__( self, text ):
+
+        self.msg = email.parser.Parser().parsestr(text)
+
+        # Subject
+        subject, encoding = email.Header.decode_header(self.msg.get("Subject"))[0]
+        if encoding:
+            subject = unicode(subject, encoding)
+        self.subject = subject
+        
+        # DateTime
+        date = self.msg.get('Date')
+        date = email.utils.parsedate(date)
+        self.date = date
+
 #--------------------------------------------------------------------
 
 class Pop3Receiver( Receiver ):
@@ -43,18 +60,17 @@ class Pop3Receiver( Receiver ):
 
     def receive(self):
 
-        pop3 = poplib.POP3_SSL( server, port )
-        pop3.user( username )
-        pop3.pass_( password )
+        pop3 = poplib.POP3_SSL( self.server, self.port )
+        pop3.user( self.username )
+        pop3.pass_( self.password )
         
         num = len(pop3.list()[1])
         
         for i in xrange(num):
-            message1 = pop3.retr(i+1)
-            message2 = "\n".message1[1]
-            message3 = email.parser.Parser().parsestr(message2)
-            
-            yield message3
+            message = pop3.retr(i+1)
+            text = "\n".join(message[1])
+
+            yield Email(text)
         
         pop3.quit()
 

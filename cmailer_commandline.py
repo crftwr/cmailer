@@ -16,8 +16,6 @@ class commandline_Launcher:
 
     def onCandidate( self, update_info ):
 
-        #pane = self.main_window.activePane()
-        #basedir = pane.file_list.getLocation()
         basedir = "."
 
         left = update_info.text[ : update_info.selection[0] ]

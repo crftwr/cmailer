@@ -428,13 +428,13 @@ class MainWindow( ckit.Window ):
     #  @param self      -
     #  @param blocking  ユーザ入力権を獲得するまでブロックするか
     #
-    #  内骨格をマウスやキーボードで操作させる権利を獲得するための関数です。\n\n
+    #  CraftMailerをマウスやキーボードで操作させる権利を獲得するための関数です。\n\n
     #
     #  バックグラウンド処理の途中や最後でユーザの操作を受け付ける場合には、
     #  releaseUserInputOwnership と releaseUserInputOwnership を使って、
     #  入力権を所有する必要があります。
     #  さもないと、フォアグラウンドのユーザ操作と衝突してしまい、ユーザが混乱したり、
-    #  内骨格が正しく動作しなくなります。\n\n
+    #  CraftMailerが正しく動作しなくなります。\n\n
     #
     #  @sa releaseUserInputOwnership
     #
@@ -593,7 +593,7 @@ class MainWindow( ckit.Window ):
     #  @param comment           ユーザに説明する際のタスクの名前
     #  @param create_new_queue  新しいタスクキューを作成し、優先的に処理するか。( True:作成する  False:作成しない  None:問い合わせる )
     #
-    #  内骨格はバックグランド処理をサポートしており、ファイルのコピーや検索などの時間のかかる処理をバックグラウンドで実行しながら、
+    #  CraftMailerはバックグランド処理をサポートしており、ファイルのコピーや検索などの時間のかかる処理をバックグラウンドで実行しながら、
     #  ほかのディレクトリを閲覧したり、次に実行するバックグランド処理を予約したりすることが出来ます。\n\n
     #
     #  バックグランド処理は、複数予約することが出来ますが、同時に実行することが出来るのは１つだけで、キュー(待ち行列)に投入されて、
@@ -654,7 +654,7 @@ class MainWindow( ckit.Window ):
     #  @param enter_handler             コマンド入力欄でEnterキーが押されたときのハンドラ
     #  @return                          入力された文字列
     #
-    #  内骨格のメインウインドウの下端のステータスバーの領域をつかって、任意の文字列の入力を受け付けるための関数です。\n\n
+    #  CraftMailerのメインウインドウの下端のステータスバーの領域をつかって、任意の文字列の入力を受け付けるための関数です。\n\n
     #
     def commandLine( self, title, text=u"", selection=None, auto_complete=False, autofix_list=None, return_modkey=False, update_handler=None, candidate_handler=None, candidate_remove_handler=None, status_handler=None, enter_handler=None ):
 
@@ -1646,7 +1646,7 @@ class MainWindow( ckit.Window ):
     #  @param timeout   表示時間 (ミリ秒単位)
     #  @param error     エラー形式(赤文字)で表示するか
     #
-    #  内骨格のメインウインドウの下端にあるステータスバーに、任意の文字列を表示するための関数です。\n\n
+    #  CraftMailerのメインウインドウの下端にあるステータスバーに、任意の文字列を表示するための関数です。\n\n
     #
     #  引数 timeout に整数を指定すると、時間制限付の表示となり、自動的に消えます。\n
     #  引数 timeout に None を渡すと、時間制限のない表示となり、clearStatusMessage() が呼ばれるまで表示されたままになります。
@@ -1669,7 +1669,7 @@ class MainWindow( ckit.Window ):
 
     ## ステータスバーのメッセージを消す
     #
-    #  内骨格のステータスバーに表示されたメッセージを消します。
+    #  CraftMailerのステータスバーに表示されたメッセージを消します。
     #
     #  @sa setStatusMessage
     #
@@ -1694,7 +1694,7 @@ class MainWindow( ckit.Window ):
     #  @param value     プログレス値 ( 0.0 ～ 1.0、または、[ 0.0 ～ 1.0, ... ] )
     #  @param timeout   表示時間 (ミリ秒単位)
     #
-    #  内骨格のメインウインドウの右下の端にある領域に、プログレスバーを表示するか、すでに表示されているプログレスバーの進捗度を変更するための関数です。\n\n
+    #  CraftMailerのメインウインドウの右下の端にある領域に、プログレスバーを表示するか、すでに表示されているプログレスバーの進捗度を変更するための関数です。\n\n
     #
     #  引数 value には、進捗度合いを 0 から 1 までの浮動少数で渡します。\n
     #  通常は、引数 value には単一の浮動少数を渡しますが、二つ以上の進捗度を格納した配列を渡すことも可能で、その場合は複数のプログレスバーが縦に並んで表示されます。\n
@@ -1718,7 +1718,7 @@ class MainWindow( ckit.Window ):
 
     ## プログレスバーを消す
     #
-    #  内骨格のプログレスバーを消します。
+    #  CraftMailerのプログレスバーを消します。
     #
     #  @sa setProgressValue
     #
@@ -2279,11 +2279,10 @@ class MainWindow( ckit.Window ):
         self.launcher.command_list = [
             ( u"Reload",           self.command_Reload ),
             ( u"About",            self.command_About ),
-            ( u"SplitFile",        self.command_SplitFile ),
             ( u"Wallpaper",        self.command_Wallpaper ),
+            ( u"ReceiveTest",      self.command_ReceiveTest ),
             ( u"_MemoryStat",      self.command_MemoryStat ),
             ( u"_RefererTree",     self.command_RefererTree ),
-            ( u"NetworkPlaceTest", self.command_NetworkPlaceTest ),
         ]
         
         cmailer_usernamespace.reload( self.config_filename )
@@ -2500,7 +2499,7 @@ class MainWindow( ckit.Window ):
         if not self.ini.has_option( "MISC", "drive_case" ):
             self.ini.set( "MISC", "drive_case", "nocare" )
         if not self.ini.has_option( "MISC", "app_name" ):
-            self.ini.set( "MISC", "app_name", u"内骨格".encode("utf8") )
+            self.ini.set( "MISC", "app_name", u"CraftMailer".encode("utf8") )
         if not self.ini.has_option( "MISC", "delete_behavior" ):
             self.ini.set( "MISC", "delete_behavior", "builtin" )
         if not self.ini.has_option( "MISC", "ignore_1second" ):
@@ -3299,7 +3298,7 @@ class MainWindow( ckit.Window ):
 
     ## 選択されているアイテムを削除する(デフォルトの方法で)
     #
-    #  内骨格では、メーラに内蔵された削除機能と、OSのゴミ箱を使った削除を選択することができます。
+    #  CraftMailerでは、メーラに内蔵された削除機能と、OSのゴミ箱を使った削除を選択することができます。
     #  command_Delete ではデフォルトに設定された方法で削除を実行します。
     #  削除のデフォルト動作は、設定メニュー2で変更することが出来ます。
     #
@@ -3313,7 +3312,7 @@ class MainWindow( ckit.Window ):
 
     ## 選択されているアイテムを削除する(デフォルトではない方法で)
     #
-    #  内骨格では、メーラに内蔵された削除機能と、OSのゴミ箱を使った削除を選択することができます。
+    #  CraftMailerでは、メーラに内蔵された削除機能と、OSのゴミ箱を使った削除を選択することができます。
     #  command_Delete2 ではデフォルトではない方法で削除を実行します。
     #  削除のデフォルト動作は、設定メニュー2で変更することが出来ます。
     #
@@ -5405,7 +5404,7 @@ class MainWindow( ckit.Window ):
 
         self.quit()
 
-    ## 次の内骨格に切り替える
+    ## 次のCraftMailerに切り替える
     def command_ActivateCmailerNext(self):
     
         desktop = pyauto.Window.getDesktop()
@@ -6085,252 +6084,14 @@ class MainWindow( ckit.Window ):
     def command_BookmarkListLocal(self):
         self._bookmarkListCommon(True)
 
-    ## FTP/WebDAV機能を実行します (実験中)
-    #
-    #  引数 args には、( URL, ユーザ名, パスワード ) を渡します。
-    #
-    def command_NetworkPlaceTest( self, args ):
+    def command_ReceiveTest(self):
 
-        if len(args)==3:
+        print "ReceiveTest"
 
-            import cmailer_networkplace
+        for msg in self.account.receive():
+            print msg.subject, time.strftime( "%Y/%m/%d %H:%M:%S", msg.date )
 
-            pane = self.activePane()
-
-            lister = cmailer_networkplace.lister_NetworkPlace( self, args[0].strip(), args[1].strip(), args[2].strip() )
-
-            self.jumpLister( pane, lister )
-
-        else:
-            print u"FTP/WebDAV機能のテスト"
-            print u"  ex) NetworkPlaceTest; ftp://remote.server.com ; username ; password"
-            print u""
-
-    ## ファイルを分割する
-    def command_SplitFile(self):
-
-        active_pane = self.activePane()
-        inactive_pane = self.inactivePane()
-
-        dst_lister = inactive_pane.file_list.getLister()
-                    
-        if not hasattr(inactive_pane.file_list.getLister(),"getCopyDst"):
-            return
-
-        items = []
-        for i in xrange(active_pane.file_list.numItems()):
-            item = active_pane.file_list.getItem(i)
-            if item.selected():
-                items.append(item)
-
-        if len(items)==0:
-            items.append( active_pane.file_list.getItem(active_pane.cursor) )
-
-        items = filter( lambda item : not item.isdir() and hasattr(item,"getFullpath"), items )
-
-        if len(items)==0:
-            self.setStatusMessage( u"分割可能なファイルが選択されていません", 3000, error=True )
-            return
-
-        class jobSplitFile:
-
-            def __init__( job_self, size ):
-                job_self.size = size
-                job_self.overwritewindow_default_result = None
-                job_self.toomany_numsplit_default_result = None
-
-            def onSameFilenameExist(job_self):
-                result, mod = cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_YESNO, u"ファイル分割の上書き確認", u"すでに同じ名前のファイルが存在します。上書きしますか？", return_modkey=True )
-                return result, mod
-
-            def onTooManyNumSplit( job_self, num ):
-                result, mod = cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_YESNO, u"ファイル分割数の確認", u"%d 個に分割されます。よろしいですか？" % num, return_modkey=True )
-                return result, mod
-
-            def __call__( job_self, job_item ):
-
-                print u"ファイル分割 : %s" % cmailer_misc.getFileSizeString(job_self.size)
-                
-                for item in items:
-                    
-                    if job_item.isCanceled(): break
-                    job_item.waitPaused()
-
-                    index = 0
-                    src_file = item.open()
-                    job_self.total_rest_size = item.size()
-
-                    print u"  From : %s" % item.getName()
-
-                    if job_self.size * 100 < item.size():
-
-                        if job_self.toomany_numsplit_default_result==None:
-
-                            self.acquireUserInputOwnership()
-                            try:
-                                result, mod = self.synccall( job_self.onTooManyNumSplit, ( (item.size() + job_self.size - 1) / job_self.size, ) )
-                            finally:
-                                self.releaseUserInputOwnership()
-                        
-                            if mod & MODKEY_SHIFT:
-                                job_self.toomany_numsplit_default_result = result
-                        else:
-                            result = job_self.toomany_numsplit_default_result
-
-                        if result==MessageBox.RESULT_CANCEL or result==MessageBox.RESULT_NO:
-                            job_item.cancel()
-                            return
-                        elif result==MessageBox.RESULT_YES:
-                            pass
-                        else:
-                            assert(0)
-
-                    while 1:
-
-                        if job_item.isCanceled(): break
-                        job_item.waitPaused()
-                    
-                        dst_name = os.path.split(item.getName())[1] + ".%03d" % index
-
-                        print u"    To : %s …" % dst_name,
-
-                        dst_existing_item = dst_lister.exists(dst_name)
-                        if dst_existing_item:
-
-                            print u'すでに存在 …',
-
-                            if job_self.overwritewindow_default_result==None:
-
-                                self.acquireUserInputOwnership()
-                                try:
-                                    result, mod = self.synccall( job_self.onSameFilenameExist, () )
-                                finally:
-                                    self.releaseUserInputOwnership()
-                                
-                                if mod & MODKEY_SHIFT:
-                                    job_self.overwritewindow_default_result = result
-                            else:
-                                result = job_self.overwritewindow_default_result
-
-                            if result==MessageBox.RESULT_CANCEL or result==MessageBox.RESULT_NO:
-                                print u'中断'
-                                job_item.cancel()
-                                return
-                            elif result==MessageBox.RESULT_YES:
-                                pass
-                            else:
-                                assert(0)
-
-                        def copy_file():
-                        
-                            try:
-                                dst_file = dst_lister.getCopyDst( dst_name )
-
-                                rest_size = job_self.size
-                    
-                                while 1:
-
-                                    if job_item.isCanceled(): break
-                                    job_item.waitPaused()
-                    
-                                    read_size = 64 * 1024
-                                    if rest_size < 64 * 1024 : read_size = rest_size
-                                    buf = src_file.read(read_size)
-                                    if not buf:
-                                        job_self.total_rest_size = 0
-                                        break
-                        
-                                    dst_file.write(buf)
-
-                                    rest_size -= len(buf)
-                                    job_self.total_rest_size -= len(buf)
-                                    if rest_size==0:
-                                        break
-
-                                    # プログレスバー
-                                    if item.size()>0:
-                                        progress_ratio = [ 1.0-float(job_self.total_rest_size)/item.size(), 1.0-float(rest_size)/job_self.size ]
-                                    else:
-                                        progress_ratio = [ 0.0, 0.0 ]
-                                    self.setProgressValue(progress_ratio)
-
-                                dst_file.close()
-
-                                if job_item.isCanceled():
-                                    dst_lister.unlink( dst_name )
-                                    print u'中断'
-                                    return
-
-                            except Exception, e:
-                                print u'失敗'
-                                print "  %s" % unicode(str(e),'mbcs')
-                                cmailer_debug.printErrorInfo()
-                            else:
-                                print u'完了'
-
-                        copy_file()
-
-                        index += 1
-
-                        if job_self.total_rest_size==0:
-                            break
-                    
-                    src_file.close()        
-
-        def jobSplitFileFinished(job_item):
-
-            self.clearProgress()
-
-            if job_item.isCanceled():
-                print u'中断しました.\n'
-            else:
-                print u'Done.\n'
-
-            self.refreshFileList( self.left_pane, True, True )
-            self.refreshFileList( self.right_pane, True, True )
-            self.paint( PAINT_LEFT | PAINT_RIGHT )
-
-        re_pattern = re.compile( "([0-9.]+)((GB)|G|(MB)|M|(KB)|K|B|)", re.IGNORECASE )
-
-        def statusString( update_info ):
-            re_result = re_pattern.match(update_info.text)
-            if re_result and re_result.group(0)==update_info.text:
-                return u"OK"
-            else:
-                return u"  "
-
-        default_size = self.ini.get( "SPLIT", "size" )
-        result = self.commandLine( u"Size", text=default_size, selection=[0,len(default_size)], status_handler=statusString )
-        if result==None : return
-        
-        size_text = result
-
-        re_result = re_pattern.match(size_text)
-        if re_result and re_result.group(0)==size_text:
-
-            if re_result.group(1).find(".")<0:
-                number = int(re_result.group(1))
-            else:
-                number = float(re_result.group(1))
-
-            unit = re_result.group(2).upper()
-            
-            if unit=="" or unit=="B":
-                size = int(number)
-            elif unit=="K" or unit=="KB":
-                size = int(number * 1024)
-            elif unit=="M" or unit=="MB":
-                size = int(number * 1024 * 1024)
-            elif unit=="G" or unit=="GB":
-                size = int(number * 1024 * 1024 * 1024)
-
-            self.ini.set( "SPLIT", "size", size_text.encode("utf8") )
-
-            job_item = ckit.JobItem( jobSplitFile(size), jobSplitFileFinished )
-            self.taskEnqueue( job_item, u"ファイル分割" )
-
-        else:
-            print u'ERROR : 不正なサイズ : %s' % size_text
+        print "ReceiveTest end"
 
     ## Pythonインタプリタのメモリの統計情報を出力する(デバッグ目的)
     def command_MemoryStat(self):
