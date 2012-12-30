@@ -51,7 +51,7 @@ class candidate_Filename():
         if unc[0] and not unc[1]:
             servername = unc[0].replace('/','\\')
             try:
-                infolist = cfiler_native.enumShare(servername)
+                infolist = cmailer_native.enumShare(servername)
             except WindowsError:
                 infolist = []    
             for info in infolist:
@@ -63,7 +63,7 @@ class candidate_Filename():
                             dirname_list.append( info[0] + u"\\" )
         else:
             try:
-                infolist = cfiler_native.findFile( ckit.joinPath(path,'*'), use_cache=True )
+                infolist = cmailer_native.findFile( ckit.joinPath(path,'*'), use_cache=True )
             except WindowsError:
                 infolist = []
             for info in infolist:

@@ -1,8 +1,6 @@
 ﻿from ckit import *
 
 from cmailer_mainwindow import *
-from cmailer_listwindow import *
-from cmailer_msgbox import *
 from cmailer_misc import *
 from cmailer_native import *
 

@@ -1,4 +1,5 @@
 cmailer.py
+cmailer_account.py
 cmailer_debug.py
 cmailer_main.py
 cmailer_mainwindow.py
@@ -6,6 +7,7 @@ cmailer_misc.py
 cmailer_resource.py
 cmailer_statusbar.py
 cmailer_stdlib.py
+cmailer_usernamespace.py
 makefile.py
 
 cmemo_native/cmailer_native.cpp
