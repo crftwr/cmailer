@@ -42,7 +42,7 @@ import cmailer_native
 import cmailer_error
 """
 
-import cmailer_account
+import cmailer_email
 import cmailer_resource
 import cmailer_statusbar
 import cmailer_usernamespace
@@ -208,7 +208,7 @@ class MainWindow( ckit.Window ):
     FOCUS_LEFT  = 0
     FOCUS_RIGHT = 1
 
-    def __init__( self, config_filename, ini_filename, debug=False, profile=False ):
+    def __init__( self, config_filename, ini_filename, mbox_dirname, debug=False, profile=False ):
     
         self.initialized = False
         self.quit_required = True
@@ -221,6 +221,8 @@ class MainWindow( ckit.Window ):
         
         self.ini = ConfigParser.RawConfigParser()
         self.ini_filename = ini_filename
+        
+        self.mbox_dirname = mbox_dirname
 
         self.loadState()
 
@@ -286,12 +288,14 @@ class MainWindow( ckit.Window ):
         #self.bookmark = cmailer_bookmark.Bookmark()
         #self.bookmark.load( self.ini, "BOOKMARK" )
 
-        self.account = cmailer_account.Account(
-            cmailer_account.Pop3Receiver(
+        self.inbox_folder = cmailer_email.Folder( os.path.join( self.mbox_dirname, "inbox.mbox" ) )
+
+        self.account = cmailer_email.Account(
+            cmailer_email.Pop3Receiver(
                     "pop.gmail.com", 995,
                     self.ini.get( "ACCOUNT", "username" ), self.ini.get( "ACCOUNT", "password" )
             ),
-            None,
+            None
         )
 
         class Pane:
@@ -6088,8 +6092,19 @@ class MainWindow( ckit.Window ):
 
         print "ReceiveTest"
 
-        for msg in self.account.receive():
-            print msg.subject, time.strftime( "%Y/%m/%d %H:%M:%S", msg.date )
+        count = 0
+
+        self.inbox_folder.lock()
+
+        try:
+            for email in self.account.receive():
+                print email.subject, time.strftime( "%Y/%m/%d %H:%M:%S", email.date )
+                self.inbox_folder.add(email)
+                count += 1
+                if count >= 10 : break
+            self.inbox_folder.flush()
+        finally:
+            self.inbox_folder.unlock()
 
         print "ReceiveTest end"
 

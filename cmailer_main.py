@@ -52,6 +52,7 @@ if __name__ == "__main__":
     default_config_filename = os.path.join( ckit.getAppExePath(), '_config.py' )
     config_filename = os.path.join( ckit.dataPath(), 'config.py' )
     ini_filename = os.path.join( ckit.dataPath(), 'cmailer.ini' )
+    mbox_dirname = os.path.join( ckit.dataPath(), '' )
 
     # config.py がどこにもない場合は作成する
     if not os.path.exists(config_filename) and os.path.exists(default_config_filename):
@@ -60,6 +61,7 @@ if __name__ == "__main__":
     _main_window = cmailer_mainwindow.MainWindow(
         config_filename = config_filename,
         ini_filename = ini_filename,
+        mbox_dirname = mbox_dirname,
         debug = debug, 
         profile = profile )
 
