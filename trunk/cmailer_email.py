@@ -1,4 +1,5 @@
 import email.parser
+import mailbox
 import poplib
 
 #--------------------------------------------------------------------
@@ -10,7 +11,8 @@ class Account:
         self.sender = sender
 
     def receive( self ):
-        return self.receiver.receive()
+        for email in self.receiver.receive():
+            yield email
 
     def send( self ):
         return self.sender.send()
@@ -31,22 +33,28 @@ class Sender:
     def send(self):
         pass
 
-class Email:
+class Email( mailbox.mboxMessage ):
 
     def __init__( self, text ):
-
-        self.msg = email.parser.Parser().parsestr(text)
+    
+        msg = email.parser.Parser().parsestr(text)
+        mailbox.mboxMessage.__init__( self, msg )
 
         # Subject
-        subject, encoding = email.Header.decode_header(self.msg.get("Subject"))[0]
+        subject, encoding = email.Header.decode_header(self.get("Subject"))[0]
         if encoding:
             subject = unicode(subject, encoding)
         self.subject = subject
         
         # DateTime
-        date = self.msg.get('Date')
+        date = self.get('Date')
         date = email.utils.parsedate(date)
         self.date = date
+
+class Folder( mailbox.mbox ):
+
+    def __init__( self, path ):
+        mailbox.mbox.__init__( self, path )
 
 #--------------------------------------------------------------------
 
