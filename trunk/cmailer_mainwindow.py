@@ -21,29 +21,18 @@ from ckit.ckit_const import *
 
 """
 import cmailer_isearch
-import cmailer_archiver
-import cmailer_msgbox
 import cmailer_listwindow
-import cmailer_consolewindow
-import cmailer_overwritewindow
-import cmailer_renamewindow
 import cmailer_grepwindow
 import cmailer_textviewer
-import cmailer_imageviewer
-import cmailer_musicplayer
 import cmailer_configmenu
-import cmailer_bookmark
-import cmailer_commandline
-import cmailer_history
 import cmailer_wallpaper
 import cmailer_misc
-import cmailer_filecmp
 import cmailer_native
-import cmailer_error
 """
 
 import cmailer_email
 import cmailer_resource
+import cmailer_msgbox
 import cmailer_statusbar
 import cmailer_usernamespace
 import cmailer_commandline
@@ -51,10 +40,7 @@ import cmailer_history
 import cmailer_debug
 
 
-"""
 MessageBox = cmailer_msgbox.MessageBox
-OverWriteWindow = cmailer_overwritewindow.OverWriteWindow
-"""
 
 os.stat_float_times(False)
 
@@ -2196,18 +2182,12 @@ class MainWindow( ckit.Window ):
         self.keymap[ "C-C" ] = self.command_SetClipboard_LogSelectedOrFilename
         self.keymap[ "C-S-C" ] = self.command_SetClipboard_Fullpath
         self.keymap[ "A-C" ] = self.command_SetClipboard_LogAll
-        self.keymap[ "P" ] = self.command_CreateArchive
-        self.keymap[ "U" ] = self.command_ExtractArchive
-        self.keymap[ "S-U" ] = self.command_InfoArchive
         self.keymap[ "B" ] = self.command_BookmarkListLocal
         self.keymap[ "S-B" ] = self.command_BookmarkList
         self.keymap[ "C-B" ] = self.command_Bookmark
         self.keymap[ "X" ] = self.command_CommandLine
-        self.keymap[ "Period" ] = self.command_MusicList
-        self.keymap[ "S-Period" ] = self.command_MusicStop
         self.keymap[ "Z" ] = self.command_ConfigMenu
         self.keymap[ "S-Z" ] = self.command_ConfigMenu2
-        self.keymap[ "A-Z" ] = self.command_DuplicateCmailer
         self.keymap[ "S-Colon" ] = self.command_SetFilter
         self.keymap[ "Colon" ] = self.command_SetFilterList
         self.keymap[ "BackSlash" ] = self.command_GotoRootDir
@@ -2349,11 +2329,6 @@ class MainWindow( ckit.Window ):
             pass
 
         try:
-            self.ini.add_section("IMAGEVIEWER")
-        except ConfigParser.DuplicateSectionError:
-            pass
-
-        try:
             self.ini.add_section("PATTERN")
         except ConfigParser.DuplicateSectionError:
             pass
@@ -2395,11 +2370,6 @@ class MainWindow( ckit.Window ):
 
         try:
             self.ini.add_section("DRIVES")
-        except ConfigParser.DuplicateSectionError:
-            pass
-
-        try:
-            self.ini.add_section("MUSIC")
         except ConfigParser.DuplicateSectionError:
             pass
 
@@ -2453,9 +2423,6 @@ class MainWindow( ckit.Window ):
         if not self.ini.has_option( "HOTKEY", "activate_mod" ):
             self.ini.set( "HOTKEY", "activate_mod", "0" )
 
-        if not self.ini.has_option( "IMAGEVIEWER", "zoom_policy" ):
-            self.ini.set( "IMAGEVIEWER", "zoom_policy", "fit" )
-
         if not self.ini.has_option( "GREP", "pattern" ):
             self.ini.set( "GREP", "pattern", "" )
         if not self.ini.has_option( "GREP", "recursive" ):
@@ -2481,9 +2448,6 @@ class MainWindow( ckit.Window ):
             self.ini.set( "UPDATE", "check_frequency", "1000000" )
         if not self.ini.has_option( "UPDATE", "last_checked_date" ):
             self.ini.set( "UPDATE", "last_checked_date", "0" )
-
-        if not self.ini.has_option( "MUSIC", "restore" ):
-            self.ini.set( "MUSIC", "restore", "0" )
 
         if not self.ini.has_option( "ACCOUNT", "username" ):
             self.ini.set( "ACCOUNT", "username", "" )
@@ -2553,21 +2517,15 @@ class MainWindow( ckit.Window ):
             self.ini.set( "GEOMETRY", "log_window_height", str(self.log_window_height) )
             self.ini.set( "GEOMETRY", "left_window_width", str(self.left_window_width) )
 
-            self.left_pane.history.save( self.ini, "LEFTPANE" )
-            self.right_pane.history.save( self.ini, "RIGHTPANE" )
+            #self.left_pane.history.save( self.ini, "LEFTPANE" )
+            #self.right_pane.history.save( self.ini, "RIGHTPANE" )
 
-            self.bookmark.save( self.ini, "BOOKMARK" )
+            #self.bookmark.save( self.ini, "BOOKMARK" )
 
             self.commandline_history.save( self.ini, "COMMANDLINE" )
-            self.pattern_history.save( self.ini, "PATTERN" )
-            self.search_history.save( self.ini, "SEARCH" )
+            #self.pattern_history.save( self.ini, "PATTERN" )
+            #self.search_history.save( self.ini, "SEARCH" )
             
-            if self.musicplayer:
-                self.musicplayer.save( self.ini, "MUSIC" )
-                self.ini.set( "MUSIC", "restore", str(1) )
-            else:
-                self.ini.set( "MUSIC", "restore", str(0) )
-
             tmp_ini_filename = self.ini_filename + ".tmp"
 
             fd = file( tmp_ini_filename, "w" )
@@ -3073,84 +3031,6 @@ class MainWindow( ckit.Window ):
                     if fnmatch.fnmatch( item.name, pattern ):
                         association[1](item)
                         return
-
-            if ext in MainWindow.zip_file_ext_list or ext in ( ".tgz", ".gz", ".bz2", ".lzh", ".rar", ".7z" ):
-            
-                if not hasattr(item,"getFullpath"):
-                    self.setStatusMessage( u"アーカイブとしてオープンできないアイテムです", 1000, error=True )
-                    return
-                
-                fullpath = item.getFullpath()    
-
-                if ext in MainWindow.zip_file_ext_list:
-                    new_lister = cmailer_filelist.lister_Zip( self, fullpath, "" )
-                elif ext in ( ".tgz", ".gz", ".bz2" ):
-                    new_lister = cmailer_filelist.lister_Tar( self, fullpath, "" )
-                elif ext in ( ".lzh", ".rar", ".7z" ):
-                    new_lister = cmailer_filelist.lister_Archive( self, fullpath, "" )
-
-                self.jumpLister( pane, new_lister )
-
-            elif ext in MainWindow.image_file_ext_list:
-            
-                items = []
-                selection = 0
-
-                for i in xrange(pane.file_list.numItems()):
-                    item2 = pane.file_list.getItem(i)
-                    ext = os.path.splitext(item2.name)[1]
-                    ext = ext.lower()
-                    if i==pane.cursor:
-                        items.append(item) # ショートカット対応のため、item2 ではなく item をつかう
-                        selection = len(items)-1
-                    elif ext in MainWindow.image_file_ext_list:
-                        items.append(item2)
-
-                if len(items) :
-
-                    def onCursorMove(item):
-                        for i in xrange(pane.file_list.numItems()):
-                            if pane.file_list.getItem(i) is item:
-                                pane.cursor = i
-                                pane.scroll_info.makeVisible( pane.cursor, self.fileListItemPaneHeight(), 1 )
-                                self.paint(PAINT_UPPER)
-                                return
-            
-                    def onSelect(item):
-                        for i in xrange(pane.file_list.numItems()):
-                            if pane.file_list.getItem(i) is item:
-                                pane.file_list.selectItem(i)
-                                self.paint(PAINT_UPPER)
-                                return
-            
-                    pos = self.centerOfWindowInPixel()
-                    viewer = cmailer_imageviewer.ImageViewer( pos[0], pos[1], self.width(), self.height(), self, self.ini, u"image viewer", items, selection, onCursorMove, onSelect )
-
-                    self.appendHistory( pane, True )
-
-            elif ext in MainWindow.music_file_ext_list:
-
-                items = []
-                selection = 0
-
-                for i in xrange(pane.file_list.numItems()):
-                    item2 = pane.file_list.getItem(i)
-                    if hasattr(item2,"getFullpath"):
-                        ext = os.path.splitext(item2.name)[1]
-                        ext = ext.lower()
-                        if i==pane.cursor:
-                            items.append(item) # ショートカット対応のため、item2 ではなく item をつかう
-                            selection = len(items)-1
-                        elif ext in MainWindow.music_file_ext_list:
-                            items.append(item2)
-
-                if len(items) :
-                    if self.musicplayer==None:
-                        self.musicplayer = cmailer_musicplayer.MusicPlayer(self)
-                    self.musicplayer.setPlayList( items, selection )
-                    self.musicplayer.play()
-
-                    self.appendHistory( pane, True )
 
             else:
                 self._viewCommon( location, item )
@@ -5557,437 +5437,6 @@ class MainWindow( ckit.Window ):
 
         self.setStatusMessage( u"全てのログをクリップボードにコピーしました", 3000 )
 
-    ## アーカイブを作成する
-    def command_CreateArchive(self):
-
-        active_pane = self.activePane()
-        inactive_pane = self.inactivePane()
-        
-        active_pane_location = active_pane.file_list.getLocation()
-        inactive_pane_location = inactive_pane.file_list.getLocation()
-
-        items = []
-        for i in xrange(active_pane.file_list.numItems()):
-            item = active_pane.file_list.getItem(i)
-            if item.selected():
-                items.append(item)
-
-        if len(items)==0:
-            items.append( active_pane.file_list.getItem(active_pane.cursor) )
-
-        items = filter( lambda item : hasattr(item,"getFullpath"), items )
-
-        if len(items)==0: return
-
-        name = active_pane.file_list.getItem(active_pane.cursor).getName()
-        name = os.path.split(name)[1]
-        name = os.path.splitext(name)[0]
-
-        result = self.commandLine( u"Archive", auto_complete=False, autofix_list=["\\/","."], candidate_handler=cmailer_misc.candidate_Filename(inactive_pane_location) )
-        if result==None : return
-
-        archive_fullpath = os.path.join( inactive_pane_location, result )
-
-        class jobCreateArchive:
-
-            def __init__( self, main_window ):
-                self.main_window = main_window
-
-            def __call__( self, job_item ):
-
-                # ビジーインジケータ On
-                self.main_window.setProgressValue(None)
-
-                ext = os.path.splitext(archive_fullpath)[1]
-                ext = ext.lower()
-                if ext in MainWindow.zip_file_ext_list:
-                    self.createZip( job_item, archive_fullpath )
-                elif ext in ('.tgz', '.gz'):
-                    self.createTar( job_item, archive_fullpath, "gz" )
-                elif ext=='.bz2':
-                    self.createTar( job_item, archive_fullpath, "bz2" )
-                elif ext in (".lzh", ".7z"):
-                    self.createArchive( job_item, archive_fullpath )
-                else:
-                    print u"ERROR : サポートされていない形式です : [%s]" % ext
-
-            def createZip( self, job_item, archive_fullpath ):
-
-                print u"アーカイブ作成 : %s :" % ( archive_fullpath, )
-
-                z = zipfile.ZipFile( archive_fullpath, "w", zipfile.ZIP_DEFLATED, True )
-
-                for item in items:
-                    if job_item.isCanceled(): break
-
-                    if job_item.waitPaused():
-                        self.main_window.setProgressValue(None)
-
-                    if item.isdir():
-                        for root, dirs, files in item.walk():
-                            if job_item.isCanceled(): break
-
-                            if job_item.waitPaused():
-                                self.main_window.setProgressValue(None)
-
-                            for f in files:
-                                if job_item.isCanceled(): break
-
-                                if job_item.waitPaused():
-                                    self.main_window.setProgressValue(None)
-
-                                arcname = f.getName().encode("mbcs")
-                                #progress_window.setValue( [ arcname ], [ ] )
-                                print "  ", arcname
-                                z.write( f.getFullpath(), arcname )
-                    else:
-                        arcname = item.getName().encode("mbcs")
-                        #progress_window.setValue( [ arcname ], [ ] )
-                        print "  ", arcname
-                        z.write( item.getFullpath(), arcname )
-                
-                z.close()        
-
-            def createTar( self, job_item, archive_fullpath, compress_type ):
-
-                print u"アーカイブ作成 : %s :" % ( archive_fullpath, )
-
-                fd = open( archive_fullpath, "wb" )
-                t = tarfile.open( u"", "w:%s"%compress_type, fd )
-
-                for item in items:
-                    if job_item.isCanceled(): break
-
-                    if job_item.waitPaused():
-                        self.main_window.setProgressValue(None)
-
-                    if item.isdir():
-                        for root, dirs, files in item.walk():
-                            if job_item.isCanceled(): break
-
-                            if job_item.waitPaused():
-                                self.main_window.setProgressValue(None)
-
-                            for f in files:
-                                if job_item.isCanceled(): break
-
-                                if job_item.waitPaused():
-                                    self.main_window.setProgressValue(None)
-
-                                arcname = f.getName().encode("mbcs")
-                                #progress_window.setValue( [ arcname ], [ ] )
-                                print "  ", arcname
-                                t.add( f.getFullpath(), arcname )
-                    else:
-                        arcname = item.getName().encode("mbcs")
-                        #progress_window.setValue( [ arcname ], [ ] )
-                        print "  ", arcname
-                        t.add( item.getFullpath(), arcname )
-                
-                t.close()
-                fd.close()        
-
-            def createArchive( self, job_item, archive_fullpath ):
-
-                print u"アーカイブ作成 : %s :" % ( archive_fullpath, )
-
-                try:
-                    archiver = cmailer_archiver.getArchiver( os.path.splitext(archive_fullpath)[1] )
-                except:
-                    job_item.cancel()
-                    return
-                
-                try:
-                    os.unlink(archive_fullpath)
-                except:
-                    pass
-                
-                for item in items:
-                    if job_item.isCanceled(): break
-
-                    if job_item.waitPaused():
-                        self.main_window.setProgressValue(None)
-
-                    print "  ", item.getName()
-                    archiver.append( archive_fullpath, active_pane_location, item.getName() )
-
-        def jobCreateArchiveFinished(job_item):
-
-            # ビジーインジケータ Off
-            self.clearProgress()
-
-            if job_item.isCanceled():
-                print u'中断しました.\n'
-            else:
-                print u'Done.\n'
-
-            self.refreshFileList( self.left_pane, True, True )
-            self.refreshFileList( self.right_pane, True, True )
-            self.paint( PAINT_LEFT | PAINT_RIGHT )
-
-        self.appendHistory( self.left_pane, True )
-        self.appendHistory( self.right_pane, True )
-
-        job_item = ckit.JobItem( jobCreateArchive(self), jobCreateArchiveFinished )
-        self.taskEnqueue( job_item, u"アーカイブ作成" )
-
-    ## アーカイブを展開する
-    def command_ExtractArchive(self):
-
-        active_pane = self.activePane()
-        inactive_pane = self.inactivePane()
-        
-        inactive_pane_location = inactive_pane.file_list.getLocation()
-        inactive_pane_lister = inactive_pane.file_list.getLister()
-
-        if not hasattr(inactive_pane_lister,"getCopyDst") or not hasattr(inactive_pane_lister,"mkdir"):
-            return
-
-        items = []
-        for i in xrange(active_pane.file_list.numItems()):
-            item = active_pane.file_list.getItem(i)
-            if item.selected():
-                items.append(item)
-
-        if len(items)==0:
-            items.append( active_pane.file_list.getItem(active_pane.cursor) )
-
-        items = filter( lambda item : hasattr(item,"getFullpath"), items )
-
-        if len(items)==0: return
-
-        class jobExtractArchive:
-
-            def __init__( self, main_window ):
-                self.main_window = main_window
-
-            def __call__( self, job_item ):
-
-                # ビジーインジケータ On
-                self.main_window.setProgressValue(None)
-
-                for item in items:
-
-                    ext = os.path.splitext(item.getName())[1]
-                    ext = ext.lower()
-                    if ext in MainWindow.zip_file_ext_list:
-                        self.extractZip( job_item, item )
-                    elif ext in (".tgz", ".gz", ".bz2" ):
-                        self.extractTar( job_item, item )
-                    elif ext in (".rar", ".lzh", ".7z" ):
-                        self.extractArchive( job_item, item )
-                    else:
-                        print u"展開不能 :", item.getName()
-
-            def extractZip( self, job_item, item ):
-                print u"アーカイブ展開 : %s :" % ( item.getName(), )
-                zipfileobj = zipfile.ZipFile( item.getFullpath(), "r" )
-                for name in zipfileobj.namelist():
-                    
-                    if job_item.isCanceled(): break
-
-                    if job_item.waitPaused():
-                        self.main_window.setProgressValue(None)
-                    
-                    name_unicode = unicode(name,'mbcs')
-
-                    if os.path.isabs(name_unicode):
-                        print u"スキップ :", item.getName()
-                        continue
-
-                    if ".." in name_unicode.split("/"):
-                        print u"スキップ :", item.getName()
-                        continue
-
-                    if name_unicode[-1]=='/':
-                        inactive_pane_lister.mkdir(name_unicode)
-                        continue
-
-                    #progress_window.setValue( [ name_unicode ], [ ] )
-                    print "  ", name_unicode
-                    
-                    try:
-                        buf = zipfileobj.read( name )
-                    except RuntimeError, e:
-                        print u'失敗'
-                        print "  %s" % unicode(str(e),'mbcs')
-                        cmailer_debug.printErrorInfo()
-                        job_item.cancel()
-                        break
-                    if job_item.isCanceled(): break
-                    
-                    if job_item.waitPaused():
-                        self.main_window.setProgressValue(None)
-                    
-                    dst_file = inactive_pane_lister.getCopyDst(name_unicode)
-                    dst_file.write(buf)
-                    dst_file.close()
-
-            def extractTar( self, job_item, item ):
-                print u"アーカイブ展開 : %s :" % ( item.getName(), )
-                tarfileobj = tarfile.open( item.getFullpath() )
-                for arcfile in tarfileobj:
-
-                    if job_item.isCanceled(): break
-                    
-                    if job_item.waitPaused():
-                        self.main_window.setProgressValue(None)
-                        
-                    name_unicode = unicode(arcfile.name,'mbcs')
-
-                    if os.path.isabs(name_unicode):
-                        print u"スキップ :", name_unicode
-                        continue
-
-                    if ".." in name_unicode.split("/"):
-                        print u"スキップ :", name_unicode
-                        continue
-
-                    print "  ", name_unicode
-
-                    if arcfile.isdir():
-                        inactive_pane_lister.mkdir(name_unicode)
-                        continue
-
-                    else:
-                        try:
-                            fd = tarfileobj.extractfile(arcfile.name)
-                        except:
-                            fd = None
-
-                        buf = ""
-                        if fd:
-                            buf = fd.read()
-                            fd.close()
-
-                        if job_item.isCanceled(): break
-                    
-                        if job_item.waitPaused():
-                            self.main_window.setProgressValue(None)
-                    
-                        dst_file = inactive_pane_lister.getCopyDst(name_unicode)
-                        dst_file.write(buf)
-                        dst_file.close()
-
-            def extractArchive( self, job_item, item ):
-                print u"アーカイブ展開 : %s" % ( item.getName(), )
-                try:
-                    archiver = cmailer_archiver.getArchiver( os.path.splitext(item.getName())[1] )
-                except:
-                    job_item.cancel()
-                    return
-                archiver.extractAll( None, item.getFullpath(), inactive_pane_location )
-
-        def jobExtractArchiveFinished(job_item):
-
-            # ビジーインジケータ Off
-            self.clearProgress()
-
-            if job_item.isCanceled():
-                print u'中断しました.\n'
-            else:
-                print u'Done.\n'
-
-            self.refreshFileList( self.left_pane, True, True )
-            self.refreshFileList( self.right_pane, True, True )
-            self.paint( PAINT_LEFT | PAINT_RIGHT )
-
-        if self.ini.getint("MISC","confirm_extract"):
-            result = cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_YESNO, u"アーカイブ展開の確認", u"アーカイブを展開しますか？" )
-            if result!=MessageBox.RESULT_YES : return
-
-        self.appendHistory( self.left_pane, True )
-        self.appendHistory( self.right_pane, True )
-
-        job_item = ckit.JobItem( jobExtractArchive(self), jobExtractArchiveFinished )
-        self.taskEnqueue( job_item, u"アーカイブ展開" )
-
-    ## アーカイブの情報を出力する
-    def command_InfoArchive(self):
-
-        active_pane = self.activePane()
-
-        items = []
-        for i in xrange(active_pane.file_list.numItems()):
-            item = active_pane.file_list.getItem(i)
-            if item.selected():
-                items.append(item)
-
-        if len(items)==0:
-            items.append( active_pane.file_list.getItem(active_pane.cursor) )
-
-        items = filter( lambda item : hasattr(item,"getFullpath"), items )
-
-        if len(items)==0: return
-
-        class InfoArchive:
-
-            def __init__( self, main_window ):
-                self.cancel_requested = False
-                self.main_window = main_window
-
-            def run(self):
-
-                for item in items:
-                    if self.cancel_requested: break
-                    ext = os.path.splitext(item.getName())[1]
-                    ext = ext.lower()
-                    if ext in MainWindow.zip_file_ext_list:
-                        self.infoZip(item)
-                    elif ext in ('.tgz', '.gz', '.bz2'):
-                        self.infoTar(item)
-                    elif ext in (".rar", ".lzh", ".7z"):
-                        self.infoArchive(item)
-                    else:
-                        print u"展開不能 :", item.getName()
-
-                if self.cancel_requested:
-                    print u'中断しました.\n'
-                else:
-                    print "Done.\n"
-
-            def cancel(self):
-                self.cancel_requested = True
-
-            def infoZip( self, item ):
-                print u"アーカイブ情報 : %s :" % ( item.getName(), )
-                zipfileobj = zipfile.ZipFile( item.getFullpath(), "r" )
-                for name in zipfileobj.namelist():
-                    if self.cancel_requested: break
-                    print "  ", name
-
-            def infoTar( self, item ):
-                print u"アーカイブ情報 : %s :" % ( item.getName(), )
-                tarfileobj = tarfile.open( item.getFullpath() )
-                for arcfile in tarfileobj:
-                    name = arcfile.name
-                    if self.cancel_requested: break
-                    print "  ", name
-
-            def infoArchive( self, item ):
-                print u"アーカイブ情報 : %s" % ( item.getName(), )
-
-                try:
-                    archiver = cmailer_archiver.getArchiver( os.path.splitext(item.getName())[1] )
-                except:
-                    return
-                
-                arc_obj = archiver.openArchive( self.main_window.getHWND(), item.getFullpath(), 0 )
-                try:
-                    for info in arc_obj.iterItems("*"):
-                        if self.cancel_requested: break
-                        name = info[0]
-                        if type(name)==type(''):
-                            name = unicode(name,'mbcs')
-                        name = ckit.replacePath(name)
-                        print "  ", name
-                finally:
-                    arc_obj.close()
-
-        infoarchive = InfoArchive(self)
-
-        self.subThreadCall( infoarchive.run, (), infoarchive.cancel )
-
     ## カーソル位置のアイテムをブックマークに登録するか解除する
     def command_Bookmark(self):
 
@@ -6259,79 +5708,6 @@ class MainWindow( ckit.Window ):
 
         self.commandLine( u"Command", auto_complete=False, autofix_list=["\\/",".",";"], candidate_handler=onCandidate, candidate_remove_handler=onCandidateRemove, status_handler=statusString, enter_handler=onEnter )
         
-    ## ミュージックプレイヤに登録されているプレイリストを一覧する
-    def command_MusicList(self):
-
-        if not self.musicplayer:
-            self.setStatusMessage( u"Musicがありません", 1000, error=True )
-            return
-
-        musicplayer_items, selection = self.musicplayer.getPlayList()
-
-        items = []
-        for music_item in musicplayer_items:
-            items.append( music_item.getName() )
-
-        def onKeyDown( vk, mod ):
-
-            if vk==VK_OEM_PERIOD and mod==0:
-                self.musicplayer.pause()
-                if self.musicplayer.isPlaying():
-                    self.setStatusMessage( u"Music : 再開", 3000 )
-                else:
-                    self.setStatusMessage( u"Music : 一時停止", 3000 )
-                list_window.cancel()
-                return True
-
-            elif vk==VK_OEM_PERIOD and mod==MODKEY_SHIFT:
-                self.command_MusicStop()
-                list_window.cancel()
-                return True
-
-            elif vk==VK_LEFT and mod==MODKEY_CTRL:
-                self.musicplayer.advance( -10.0 )
-
-            elif vk==VK_RIGHT and mod==MODKEY_CTRL:
-                self.musicplayer.advance( 10.0 )
-
-        def onStatusMessage( width, select ):
-            return u""
-
-        pos = self.centerOfWindowInPixel()
-        list_window = cmailer_listwindow.ListWindow( pos[0], pos[1], 5, 1, self.width()-5, self.height()-3, self, self.ini, u"music player", items, initial_select=selection, keydown_hook=onKeyDown, onekey_search=False, statusbar_handler=onStatusMessage )
-        self.enable(False)
-        list_window.messageLoop()
-        result = list_window.getResult()
-        self.enable(True)
-        self.activate()
-        list_window.destroy()
-
-        if result<0 : return
-
-        self.musicplayer.select(result)
-
-    ## ミュージックプレイヤを停止する
-    def command_MusicStop(self):
-        if self.musicplayer:
-            self.musicplayer.destroy()
-            self.musicplayer = None
-            self.setStatusMessage( u"Music : 停止", 3000 )
-
-    ## メーラをもうひとつ起動する
-    def command_DuplicateCmailer(self):
-        argv0 = ckit.getArgv()[0]
-        if argv0.endswith(".py"):
-            program = sys.executable
-            script = '"' + argv0 + '"'
-        else:
-            program = argv0
-            script = ""
-        left_location = os.path.join( self.leftFileList().getLocation(), "" )
-        right_location = os.path.join( self.rightFileList().getLocation(), "" )
-        left_location = left_location.replace("\\","/")
-        right_location = right_location.replace("\\","/")
-        ckit.shellExecute( None, None, program, u'%s -L"%s" -R"%s"' % (script,left_location,right_location), u"" )
-
     ## カーソル位置の画像ファイルを壁紙にする
     def command_Wallpaper(self):
         item = self.activeCursorItem()
