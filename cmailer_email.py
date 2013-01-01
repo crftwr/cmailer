@@ -22,12 +22,13 @@ import cmailer_debug
 
 class Account:
 
-    def __init__( self, receiver, sender ):
+    def __init__( self, ini, receiver, sender ):
+        self.ini = ini
         self.receiver = receiver
         self.sender = sender
 
     def receive( self ):
-        for email in self.receiver.receive():
+        for email in self.receiver.receive( self.ini ):
             yield email
 
     def send( self ):
@@ -38,7 +39,7 @@ class Receiver:
     def __init__(self):
         pass
 
-    def receive(self):
+    def receive( self, ini ):
         pass
 
 class Sender:
@@ -46,14 +47,13 @@ class Sender:
     def __init__(self):
         pass
 
-    def send(self):
+    def send( self, ini ):
         pass
 
 class Email( mailbox.mboxMessage ):
 
     def __init__( self, message ):
     
-        #msg = email.parser.Parser().parsestr(text)
         mailbox.mboxMessage.__init__( self, message )
 
         # Subject
@@ -86,21 +86,38 @@ class Pop3Receiver( Receiver ):
         self.username = username
         self.password = password
 
-    def receive(self):
+    def pop3(self):
+        return poplib.POP3( self.server, self.port )
 
-        pop3 = poplib.POP3_SSL( self.server, self.port )
+    def receive( self, ini ):
+
+        pop3 = self.pop3()
         pop3.user( self.username )
         pop3.pass_( self.password )
         
-        num = len(pop3.list()[1])
+        lastid = ini.getint( "ACCOUNT", "lastid" )
         
-        for i in xrange(num):
+        pop3_list = pop3.list()[1]
+        
+        for i in xrange( len(pop3_list) ):
+
+            message_id, message_len = pop3_list[i].split(" ")
+            
+            if int(message_id) <= lastid:
+                continue
+
             message = pop3.retr(i+1)
             text = "\n".join(message[1])
             msg = email.parser.Parser().parsestr(text)
             yield Email(msg)
-        
+
+        ini.set( "ACCOUNT", "lastid", message_id )
         pop3.quit()
+
+class Pop3SslReceiver( Pop3Receiver ):
+
+    def pop3(self):
+        return poplib.POP3_SSL( self.server, self.port )
 
 #--------------------------------------------------------------------
 
@@ -193,174 +210,6 @@ class item_Empty(item_Base):
         window.putString( x, y, width, 1, attr, s )
 
 
-# ファイルのレンダリング処理
-class item_CommonPaint(item_Base):
-
-    def paint( self, window, x, y, width, cursor, itemformat, userdata ):
-
-        attr_fg=ckit.getColor("file_fg")
-
-        if self.selected():
-            attr_bg_gradation=( ckit.getColor("select_file_bg1"), ckit.getColor("select_file_bg2"), ckit.getColor("select_file_bg1"), ckit.getColor("select_file_bg2"))
-        elif self.bookmark():
-            attr_bg_gradation=( ckit.getColor("bookmark_file_bg1"), ckit.getColor("bookmark_file_bg2"), ckit.getColor("bookmark_file_bg1"), ckit.getColor("bookmark_file_bg2"))
-        else:
-            attr_bg_gradation = None
-
-        if cursor:
-            line0=( LINE_BOTTOM, ckit.getColor("file_cursor") )
-        else:
-            line0=None
-        
-        attr = ckit.Attribute( fg=attr_fg, bg_gradation=attr_bg_gradation, line0=line0 )
-
-        s = itemformat( window, self, width, userdata )
-        window.putString( x, y, width, 1, attr, s )
-
-## 通常のファイルアイテム
-#
-#  通常の実在するファイルやディレクトリを意味するクラスです。\n\n
-#
-#  CraftMailerでは、ファイルリストに表示されるアイテムを item_Xxxx という名前のクラスのオブジェクトで表現します。\n
-#  
-class item_Default(item_CommonPaint):
-
-    def __init__( self, location, name, info=None, bookmark=False ):
-    
-        self.location = location
-        self.name = name
-
-        if info==None:
-            info_list = cmailer_native.findFile( os.path.join(self.location,self.name) )
-            if info_list:
-                info = info_list[0]
-            else:
-                raise IOError( "file does not exist. [%s]" % self.name )
-
-        self._size = info[1]
-        self._mtime = info[2]
-
-        self._selected = False
-        self._bookmark = bookmark
-
-    def __unicode__(self):
-        return os.path.join( self.location, self.name )
-
-    def getName(self):
-        return self.name
-
-    def time(self):
-        assert( type(self._mtime)==tuple )
-        return self._mtime
-
-    def size(self):
-        return self._size
-
-    def select( self, sel=None ):
-        if sel==None:
-            self._selected = not self._selected
-        else:
-            self._selected = sel;
-
-    def selected(self):
-        return self._selected
-
-    def bookmark(self):
-        return self._bookmark
-
-
-# ローカルファイルシステム上のリスト機能
-class lister_LocalFS(lister_Base):
-
-    def __init__( self, main_window, location ):
-        if type(location)==type(''):
-            location = unicode(location,'mbcs')
-        self.main_window = main_window
-        self.location = ckit.normPath(location)
-
-    def getLocation(self):
-        return self.location
-
-
-# 標準的なディレクトリのリストアップ機能
-class lister_Default(lister_LocalFS):
-
-    def __init__( self, main_window, location ):
-        lister_LocalFS.__init__( self, main_window, location )
-        
-    def destroy(self):
-        lister_LocalFS.destroy(self)
-
-    def __call__( self ):
-
-        def packListItem( fileinfo ):
-
-            item = item_Default(
-                self.location,
-                fileinfo[0],
-                fileinfo,
-                bookmark = False
-                )
-
-            return item
-
-        #bookmark_items = self.main_window.bookmark.listDir(self.location)
-
-        fileinfo_list = cmailer_native.findFile( os.path.join(self.location,"*") )
-        items = map( packListItem, fileinfo_list )
-
-        return items
-
-    def cancel(self):
-        pass
-
-    def __unicode__(self):
-        return self.location
-
-    def isLazy(self):
-        return False
-
-    def popupContextMenu( self, window, x, y, items=None ):
-        if items==None:
-            directory, name = ckit.splitPath(os.path.normpath(self.location))
-            if name:
-                return cmailer_native.popupContextMenu( window.getHWND(), x, y, directory, [name] )
-            else:
-                return cmailer_native.popupContextMenu( window.getHWND(), x, y, "", [directory] )
-        else:
-            filename_list = map( lambda item : os.path.normpath(item.getName()), items )
-            return cmailer_native.popupContextMenu( window.getHWND(), x, y, os.path.normpath(self.location), filename_list )
-
-
-# 外部からアイテムリストを受け取る機能
-class lister_Custom(lister_LocalFS):
-
-    def __init__( self, main_window, prefix, location, items ):
-        lister_LocalFS.__init__(self,main_window,location)
-        self.prefix = prefix
-        self.items = items
-
-    def destroy(self):
-        lister_LocalFS.destroy(self)
-
-    def __call__( self ):
-        items = []
-        for item in self.items:
-            items.append( copy.copy(item) )
-        return items
-
-    def cancel(self):
-        pass
-
-    def __unicode__(self):
-        return self.prefix + self.location
-
-    def isLazy(self):
-        return True
-
-#--------------------------------------------------------------------
-
-
 ## Emailアイテム
 #
 #  Emailの１通のメッセージを意味するクラスです。\n\n
@@ -374,7 +223,7 @@ class item_Email(item_Base):
         self.message = message
         
         self.name = message.subject
-        self._size = 0
+        self._size = len(message.as_string()) # FIXME : パフォーマンス要チェック
         self._mtime = message.date
 
         self._selected = False
@@ -452,21 +301,6 @@ class lister_Folder(lister_Base):
 
     def isLazy(self):
         return False
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 #--------------------------------------------------------------------
