@@ -164,25 +164,18 @@ PAINT_LEFT_HEADER        = 1<<1
 PAINT_LEFT_ITEMS         = 1<<2
 PAINT_LEFT_FOOTER        = 1<<3
 
-PAINT_RIGHT_LOCATION     = 1<<4
-PAINT_RIGHT_HEADER       = 1<<5
-PAINT_RIGHT_ITEMS        = 1<<6
-PAINT_RIGHT_FOOTER       = 1<<7
-
 PAINT_FOCUSED_LOCATION   = 1<<8
 PAINT_FOCUSED_HEADER     = 1<<9
 PAINT_FOCUSED_ITEMS      = 1<<10
 PAINT_FOCUSED_FOOTER     = 1<<11
 
-PAINT_VERTICAL_SEPARATOR = 1<<12
 PAINT_LOG                = 1<<13
 PAINT_STATUS_BAR         = 1<<14
 
 PAINT_LEFT               = PAINT_LEFT_LOCATION | PAINT_LEFT_HEADER | PAINT_LEFT_ITEMS | PAINT_LEFT_FOOTER
-PAINT_RIGHT              = PAINT_RIGHT_LOCATION | PAINT_RIGHT_HEADER | PAINT_RIGHT_ITEMS | PAINT_RIGHT_FOOTER
 PAINT_FOCUSED            = PAINT_FOCUSED_LOCATION | PAINT_FOCUSED_HEADER | PAINT_FOCUSED_ITEMS | PAINT_FOCUSED_FOOTER
-PAINT_UPPER              = PAINT_LEFT | PAINT_RIGHT | PAINT_VERTICAL_SEPARATOR
-PAINT_ALL                = PAINT_LEFT | PAINT_RIGHT | PAINT_VERTICAL_SEPARATOR | PAINT_LOG | PAINT_STATUS_BAR
+PAINT_UPPER              = PAINT_LEFT
+PAINT_ALL                = 0xffffffff
 
 ## メーラのメインウインドウ
 #
@@ -192,7 +185,6 @@ PAINT_ALL                = PAINT_LEFT | PAINT_RIGHT | PAINT_VERTICAL_SEPARATOR |
 class MainWindow( ckit.Window ):
 
     FOCUS_LEFT  = 0
-    FOCUS_RIGHT = 1
 
     def __init__( self, config_filename, ini_filename, mbox_dirname, debug=False, profile=False ):
     
@@ -946,8 +938,6 @@ class MainWindow( ckit.Window ):
 
         if left_pane_rect[0]<=char_x<left_pane_rect[2] and left_pane_rect[1]<=char_y<left_pane_rect[3]:
 
-            if focus : self.command_FocusLeft()
-
             if left_pane_rect[1]==char_y:
                 region = PAINT_LEFT_LOCATION
                 pane = self.left_pane
@@ -958,8 +948,6 @@ class MainWindow( ckit.Window ):
                 pane_rect = [ left_pane_rect[0], left_pane_rect[1]+2, left_pane_rect[2], left_pane_rect[3]-1 ]
 
         elif right_pane_rect[0]<=char_x<right_pane_rect[2] and right_pane_rect[1]<=char_y<right_pane_rect[3]:
-
-            if focus : self.command_FocusRight()
 
             if left_pane_rect[1]==char_y:
                 region = PAINT_RIGHT_LOCATION
@@ -1341,8 +1329,6 @@ class MainWindow( ckit.Window ):
     def activePaneRect(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self.leftPaneRect()
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            return self.rightPaneRect()
         else:
             assert(False)
 
@@ -1379,9 +1365,6 @@ class MainWindow( ckit.Window ):
         if self.focus==MainWindow.FOCUS_LEFT:
             pane = self.left_pane
             pane_rect = self.leftPaneRect()
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            pane = self.right_pane
-            pane_rect = self.rightPaneRect()
         else:
             assert(False)
 
@@ -1396,16 +1379,12 @@ class MainWindow( ckit.Window ):
     def activePane(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self.left_pane
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            return self.right_pane
         else:
             assert(False)
 
     def inactivePane(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self.right_pane
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            return self.left_pane
         else:
             assert(False)
 
@@ -1421,8 +1400,6 @@ class MainWindow( ckit.Window ):
     def activeFileList(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self.left_pane.file_list
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            return self.right_pane.file_list
         else:
             assert(False)
 
@@ -1430,8 +1407,6 @@ class MainWindow( ckit.Window ):
     def inactiveFileList(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self.right_pane.file_list
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            return self.left_pane.file_list
         else:
             assert(False)
 
@@ -1454,8 +1429,6 @@ class MainWindow( ckit.Window ):
     def activeItems(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self._items(self.left_pane)
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            return self._items(self.right_pane)
         else:
             assert(False)
 
@@ -1463,8 +1436,6 @@ class MainWindow( ckit.Window ):
     def inactiveItems(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self._items(self.right_pane)
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            return self._items(self.left_pane)
         else:
             assert(False)
 
@@ -1488,8 +1459,6 @@ class MainWindow( ckit.Window ):
     def activeSelectedItems(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self._selectedItems(self.left_pane)
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            return self._selectedItems(self.right_pane)
         else:
             assert(False)
 
@@ -1497,8 +1466,6 @@ class MainWindow( ckit.Window ):
     def inactiveSelectedItems(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self._selectedItems(self.right_pane)
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            return self._selectedItems(self.left_pane)
         else:
             assert(False)
 
@@ -1517,8 +1484,6 @@ class MainWindow( ckit.Window ):
     def activeCursorItem(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self._cursorItem(self.left_pane)
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            return self._cursorItem(self.right_pane)
         else:
             assert(False)
 
@@ -1526,8 +1491,6 @@ class MainWindow( ckit.Window ):
     def inactiveCursorItem(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self._cursorItem(self.right_pane)
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            return self._cursorItem(self.left_pane)
         else:
             assert(False)
 
@@ -1576,8 +1539,6 @@ class MainWindow( ckit.Window ):
     def activeJump( self, path ):
         if self.focus==MainWindow.FOCUS_LEFT:
             self.jump(self.left_pane,path)
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            self.jump(self.right_pane,path)
         else:
             assert(False)
 
@@ -1585,8 +1546,6 @@ class MainWindow( ckit.Window ):
     def inactiveJump( self, path ):
         if self.focus==MainWindow.FOCUS_LEFT:
             self.jump(self.right_pane,path)
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            self.jump(self.left_pane,path)
         else:
             assert(False)
 
@@ -1602,8 +1561,6 @@ class MainWindow( ckit.Window ):
     def activeJumpLister( self, lister, name=None, raise_error=False ):
         if self.focus==MainWindow.FOCUS_LEFT:
             self.jumpLister( self.left_pane, lister, name, raise_error )
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            self.jumpLister( self.right_pane, lister, name, raise_error )
         else:
             assert(False)
 
@@ -1611,8 +1568,6 @@ class MainWindow( ckit.Window ):
     def inactiveJumpLister( self, lister, name=None, raise_error=False ):
         if self.focus==MainWindow.FOCUS_LEFT:
             self.jumpLister( self.right_pane, lister, name, raise_error )
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            self.jumpLister( self.left_pane, lister, name, raise_error )
         else:
             assert(False)
 
@@ -1798,11 +1753,9 @@ class MainWindow( ckit.Window ):
 
     def createThemePlane(self):
 
-        self.plane_location_separator = ckit.ThemePlane3x3( self, 'vseparator.png' )
         self.plane_header = ckit.ThemePlane3x3( self, 'header.png' )
         self.plane_footer = ckit.ThemePlane3x3( self, 'footer.png' )
         self.plane_isearch = ckit.ThemePlane3x3( self, 'isearch.png', 1 )
-        self.plane_vertical_separator = ckit.ThemePlane3x3( self, 'vseparator.png' )
         self.plane_statusbar = ckit.ThemePlane3x3( self, 'statusbar.png', 1.5 )
         self.plane_commandline = ckit.ThemePlane3x3( self, 'commandline.png', 1 )
 
@@ -1814,11 +1767,9 @@ class MainWindow( ckit.Window ):
         self.updateThemePosSize()
         
     def destroyThemePlane(self):
-        self.plane_location_separator.destroy()
         self.plane_header.destroy()
         self.plane_footer.destroy()
         self.plane_isearch.destroy()
-        self.plane_vertical_separator.destroy()
         self.plane_statusbar.destroy()
         self.plane_commandline.destroy()
         self.theme_enabled = False
@@ -1831,10 +1782,8 @@ class MainWindow( ckit.Window ):
         offset_x, offset_y = self.charToClient( 0, 0 )
         char_w, char_h = self.getCharSize()
 
-        self.plane_location_separator.setPosSize(    self.left_window_width*char_w+offset_x,   0,                                                           char_w,                char_h+offset_y )
         self.plane_header.setPosSize(                0,                                        1*char_h+offset_y,                                           client_rect[2],        char_h )
         self.plane_footer.setPosSize(                0,                                        (self.height()-self.log_window_height-2)*char_h+offset_y,    client_rect[2],        char_h )
-        self.plane_vertical_separator.setPosSize(    self.left_window_width*char_w+offset_x,   2*char_h+offset_y,                                           char_w,                (self.height()-self.log_window_height-4)*char_h )
         self.plane_statusbar.setPosSize(             0,                                        (self.height()-1)*char_h+offset_y,                           client_rect[2],        client_rect[3]-((self.height()-1)*char_h+offset_y) )
 
     #--------------------------------------------------------------------------
@@ -1887,13 +1836,13 @@ class MainWindow( ckit.Window ):
 
         if option & PAINT_FOCUSED:
             if option & PAINT_FOCUSED_LOCATION:
-                option |= [ PAINT_LEFT_LOCATION, PAINT_RIGHT_LOCATION ][self.focus]
+                option |= PAINT_LEFT_LOCATION
             if option & PAINT_FOCUSED_HEADER:
-                option |= [ PAINT_LEFT_HEADER, PAINT_RIGHT_HEADER ][self.focus]
+                option |= PAINT_LEFT_HEADER
             if option & PAINT_FOCUSED_ITEMS:
-                option |= [ PAINT_LEFT_ITEMS, PAINT_RIGHT_ITEMS ][self.focus]
+                option |= PAINT_LEFT_ITEMS
             if option & PAINT_FOCUSED_FOOTER:
-                option |= [ PAINT_LEFT_FOOTER, PAINT_RIGHT_FOOTER ][self.focus]
+                option |= PAINT_LEFT_FOOTER
 
         if option & PAINT_LEFT:
             """
@@ -1920,35 +1869,6 @@ class MainWindow( ckit.Window ):
                 else:
                     self._paintFileListFooterInfo( x, y+height-1, width, 1, self.left_pane.file_list )
             """
-
-        if option & PAINT_RIGHT:
-            """
-            if self.focus==MainWindow.FOCUS_RIGHT:
-                cursor = self.right_pane.cursor
-            else:
-                cursor = None
-            rect = self.rightPaneRect()
-
-            x = rect[0]
-            y = rect[1]
-            width = rect[2]-rect[0]
-            height = rect[3]-rect[1]
-
-            if option & PAINT_RIGHT_LOCATION and height>=1 :
-                self._paintFileListLocation( x, y, width, 1, self.right_pane.file_list )
-            if option & PAINT_RIGHT_HEADER and height>=2 :
-                self._paintFileListHeaderInfo( x, y+1, width, 1, self.right_pane.file_list )
-            if option & PAINT_RIGHT_ITEMS and height>=4 :
-                self._paintFileListItems( x, y+2, width, height-3, self.right_pane.file_list, self.right_pane.scroll_info, cursor )
-            if option & PAINT_RIGHT_FOOTER and height>=1 :
-                if self.right_pane.footer_paint_hook:
-                    self.right_pane.footer_paint_hook( x, y+height-1, width, 1, self.right_pane.file_list )
-                else:
-                    self._paintFileListFooterInfo( x, y+height-1, width, 1, self.right_pane.file_list )
-            """
-
-        if option & PAINT_VERTICAL_SEPARATOR:
-            self._paintVerticalSeparator( self.leftPaneWidth(), 0, 1, self.upperPaneHeight() )
 
         if option & PAINT_LOG:
             if self.logPaneHeight()>0:
@@ -2001,21 +1921,6 @@ class MainWindow( ckit.Window ):
         str_info = file_list.getFooterInfo()
         margin = max((width-len(str_info))/2,0)
         self.putString( x+margin, y, width-margin, height, attr, str_info )
-
-    def _paintVerticalSeparator( self, x, y, width, height ):
-
-        attr = ckit.Attribute( fg=ckit.getColor("bar_fg"))
-
-        if height>=1 :
-            self.putString( x, y, width, 1, attr, u" " * width )
-        if height>=2 :
-            self.putString( x, y+1, width, 1, attr, u" " * width )
-        if height>=4 :
-            for i in xrange(2,height-1):
-                self.putString( x, y+i, width, 1, attr, u" " * width )
-
-        if height>=1 :
-            self.putString( x, y+height-1, width, 1, attr, u" " * width )
 
     def _paintLog( self, x, y, width, height, log, scroll_info, selection ):
 
@@ -2126,17 +2031,10 @@ class MainWindow( ckit.Window ):
         self.keymap[ "PageDown" ] = self.command_CursorPageDown
         self.keymap[ "C-PageUp" ] = self.command_CursorTop
         self.keymap[ "C-PageDown" ] = self.command_CursorBottom
-        self.keymap[ "Tab" ] = self.command_FocusOther
         self.keymap[ "C-Tab" ] = self.command_ActivateCmailerNext
-        self.keymap[ "Left" ] = self.command_FocusLeftOrGotoParentDir
-        self.keymap[ "Right" ] = self.command_FocusRightOrGotoParentDir
         self.keymap[ "Back" ] = self.command_GotoParentDir
-        self.keymap[ "A-Left" ] = self.command_MoveSeparatorLeft
-        self.keymap[ "A-Right" ] = self.command_MoveSeparatorRight
         self.keymap[ "A-Up" ] = self.command_MoveSeparatorUp
         self.keymap[ "A-Down" ] = self.command_MoveSeparatorDown
-        self.keymap[ "C-A-Left" ] = self.command_MoveSeparatorLeftQuick
-        self.keymap[ "C-A-Right" ] = self.command_MoveSeparatorRightQuick
         self.keymap[ "C-A-Up" ] = self.command_MoveSeparatorUpQuick
         self.keymap[ "C-A-Down" ] = self.command_MoveSeparatorDownQuick
         self.keymap[ "Return" ] = self.command_Enter
@@ -2149,8 +2047,6 @@ class MainWindow( ckit.Window ):
         self.keymap[ "S-Down" ] = self.command_LogDown
         self.keymap[ "S-Left" ] = self.command_LogPageUp
         self.keymap[ "S-Right" ] = self.command_LogPageDown
-        self.keymap[ "Minus" ] = self.command_MoveSeparatorCenter
-        self.keymap[ "S-Minus" ] = self.command_MoveSeparatorMaximizeH
         self.keymap[ "Space" ] = self.command_SelectDown
         self.keymap[ "S-Space" ] = self.command_SelectUp
         self.keymap[ "C-Space" ] = self.command_SelectRegion
@@ -2753,14 +2649,6 @@ class MainWindow( ckit.Window ):
             pane.scroll_info.pos += 1
         self.paint(PAINT_FOCUSED_ITEMS)
 
-    ## アクティブではないほうのペインにフォーカスする
-    def command_FocusOther(self):
-        if self.focus==MainWindow.FOCUS_LEFT:
-            self.focus = MainWindow.FOCUS_RIGHT
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            self.focus = MainWindow.FOCUS_LEFT
-        self.paint( PAINT_LEFT | PAINT_RIGHT )
-
     ## 親ディレクトリに移動する
     def command_GotoParentDir(self):
         pane = self.activePane()
@@ -2776,30 +2664,6 @@ class MainWindow( ckit.Window ):
         pane = self.activePane()
         new_lister = pane.file_list.getLister().getRoot()
         self.jumpLister( pane, new_lister )
-
-    ## 左ペインにフォーカスする
-    def command_FocusLeft(self):
-        if self.focus==MainWindow.FOCUS_RIGHT:
-            self.focus = MainWindow.FOCUS_LEFT
-        self.paint( PAINT_LEFT | PAINT_RIGHT )
-
-    ## 右ペインにフォーカスする
-    def command_FocusRight(self):
-        if self.focus==MainWindow.FOCUS_LEFT:
-            self.focus = MainWindow.FOCUS_RIGHT
-        self.paint( PAINT_LEFT | PAINT_RIGHT )
-
-    ## 左ペインにフォーカスされていれば親ディレクトリに移動し、そうでなければ左ペインにフォーカスする
-    def command_FocusLeftOrGotoParentDir(self):
-        if self.focus==MainWindow.FOCUS_LEFT:
-            return self.command_GotoParentDir()
-        self.command_FocusLeft()
-
-    ## 右ペインにフォーカスされていれば親ディレクトリに移動し、そうでなければ右ペインにフォーカスする
-    def command_FocusRightOrGotoParentDir(self):
-        if self.focus==MainWindow.FOCUS_RIGHT:
-            return self.command_GotoParentDir()
-        self.command_FocusRight()
 
     ## カーソル位置のアイテムの選択状態を切り替える
     def command_Select(self):
@@ -2857,20 +2721,6 @@ class MainWindow( ckit.Window ):
             pane.file_list.selectItem( i, False )
         self.paint( PAINT_FOCUSED_ITEMS | PAINT_FOCUSED_HEADER )
 
-    ## 左右のペインを分離するセパレータを左方向に動かす
-    def command_MoveSeparatorLeft(self):
-        self.left_window_width -= 3
-        if self.left_window_width<0 : self.left_window_width=0
-        self.updateThemePosSize()
-        self.paint( PAINT_UPPER )
-
-    ## 左右のペインを分離するセパレータを右方向に動かす
-    def command_MoveSeparatorRight(self):
-        self.left_window_width += 3
-        if self.left_window_width>self.width()-1 : self.left_window_width=self.width()-1
-        self.updateThemePosSize()
-        self.paint( PAINT_UPPER )
-
     ## 上下のペインを分離するセパレータを上方向に動かす
     def command_MoveSeparatorUp(self):
 
@@ -2898,32 +2748,6 @@ class MainWindow( ckit.Window ):
 
         self.updateThemePosSize()
         self.paint()
-
-    ## 左右のペインを分離するセパレータを左方向に高速に動かす
-    #
-    #  中央か端に達するまで、セパレータを左方向に動かします。
-    #
-    def command_MoveSeparatorLeftQuick(self):
-        center = (self.width()-1) / 2
-        if self.left_window_width > center :
-            self.left_window_width = center
-        else:
-            self.left_window_width = 0
-        self.updateThemePosSize()
-        self.paint( PAINT_UPPER )
-
-    ## 左右のペインを分離するセパレータを右方向に高速に動かす
-    #
-    #  中央か端に達するまで、セパレータを右方向に動かします。
-    #
-    def command_MoveSeparatorRightQuick(self):
-        center = (self.width()-1) / 2
-        if self.left_window_width < center :
-            self.left_window_width = center
-        else:
-            self.left_window_width = self.width()-1
-        self.updateThemePosSize()
-        self.paint( PAINT_UPPER )
 
     ## 上下のペインを分離するセパレータを上方向に高速に動かす
     #
@@ -2975,21 +2799,6 @@ class MainWindow( ckit.Window ):
 
         self.updateThemePosSize()
         self.paint()
-
-    ## 左右のペインを分離するセパレータを中央にリセットする
-    def command_MoveSeparatorCenter(self):
-        self.left_window_width = (self.width()-1) / 2
-        self.updateThemePosSize()
-        self.paint()
-
-    ## 左右のペインを分離するセパレータを、アクティブなペインが最大化するように、片方に寄せる
-    def command_MoveSeparatorMaximizeH(self):
-        if self.focus==MainWindow.FOCUS_LEFT:
-            self.left_window_width=self.width()-1
-        elif self.focus==MainWindow.FOCUS_RIGHT:
-            self.left_window_width=0
-        self.updateThemePosSize()
-        self.paint( PAINT_UPPER )
 
     ## カーソル位置のアイテムに対して、メーラ内で関連付けられたデフォルトの動作を実行する
     #
