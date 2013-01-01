@@ -2007,8 +2007,6 @@ class MainWindow( ckit.Window ):
         ]
         
         self.compare_tool_list = [
-            ( u"ファイル比較",      self.command_Diff ),
-            ( u"ディレクトリ比較",  self.command_DirCompare ),
         ]
 
         self.sorter_list = [
@@ -2984,34 +2982,17 @@ class MainWindow( ckit.Window ):
     def command_JumpFound(self):
 
         left_pane = self.left_pane
-        right_pane = self.right_pane
 
         pane = self.activePane()
 
         def onKeyDown( vk, mod ):
-
-            if vk==VK_LEFT and mod==0:
-                if pane==right_pane:
-                    list_window.switch_left = True
-                    list_window.quit()
-                return True
-
-            elif vk==VK_RIGHT and mod==0:
-                if pane==left_pane:
-                    list_window.switch_right = True
-                    list_window.quit()
-                return True
+            pass
 
         list_window = None
 
         while True:
 
-            if pane==left_pane:
-                title = u"検索結果(左)"
-            elif pane==right_pane:
-                title = u"検索結果(右)"
-            else:
-                assert(0)
+            title = u"検索結果"
 
             # ちらつきを防止するために ListWindow の破棄を遅延する
             list_window_old = list_window
@@ -3023,8 +3004,6 @@ class MainWindow( ckit.Window ):
 
             pos = self.centerOfWindowInPixel()
             list_window = cmailer_listwindow.ListWindow( pos[0], pos[1], 16, 1, self.width()-5, self.height()-3, self, self.ini, title, list_items, initial_select=0, onekey_search=False, return_modkey=True, keydown_hook=onKeyDown, statusbar_handler=onStatusMessage )
-            list_window.switch_left = False
-            list_window.switch_right = False
 
             if list_window_old:
                 list_window_old.destroy()
@@ -3033,13 +3012,6 @@ class MainWindow( ckit.Window ):
             list_window.messageLoop()
             result, mod = list_window.getResult()
             self.enable(True)
-
-            if list_window.switch_left:
-                pane = left_pane
-            elif list_window.switch_right:
-                pane = right_pane
-            else:
-                break
 
         self.activate()
         list_window.destroy()
@@ -3885,337 +3857,6 @@ class MainWindow( ckit.Window ):
         if result<0 : return
         self.compare_tool_list[result][1]()
 
-    ## 選択された２つのファイルアイテムを比較する
-    def command_Diff(self):
-    
-        import cmailer_diffviewer
-    
-        pane = self.activePane()
-        location = pane.file_list.getLocation()
-
-        items = []
-        for i in xrange(self.left_pane.file_list.numItems()):
-            item = self.left_pane.file_list.getItem(i)
-            if item.selected():
-                items.append(item)
-
-        for i in xrange(self.right_pane.file_list.numItems()):
-            item = self.right_pane.file_list.getItem(i)
-            if item.selected():
-                items.append(item)
-        
-        if len(items)<2:
-            cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_OK, u"ファイル比較", u"ファイルを２つ選択してください。" )
-            return
-        elif len(items)>2:
-            cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_OK, u"ファイル比較", u"ファイルを２つだけ選択してください。" )
-            return
-
-        fd = [ None, None ]
-        fd[0] = items[0].open()
-        fd[1] = items[1].open()
-
-        data_64kb = [ None, None ]
-        data_64kb[0] = fd[0].read( 64 * 1024 )
-        data_64kb[1] = fd[1].read( 64 * 1024 )
-        
-        encoding = [ None, None ]
-
-        text_encoding = ckit.detectTextEncoding(data_64kb[0])
-        encoding[0] = text_encoding.encoding
-
-        text_encoding = ckit.detectTextEncoding(data_64kb[1])
-        encoding[1] = text_encoding.encoding
-
-        def printFilenameLog( str_mode ):
-            print u"ファイル比較 (%s):" % str_mode
-            print u"   left ;", items[0].getName()
-            print u"  right ;", items[1].getName()
-
-        if encoding[0]==None or encoding[1]==None:
-            
-            if items[0].size() != items[1].size() or data_64kb[0] != data_64kb[1]:
-                printFilenameLog( "binary" )
-                cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_OK, u"ファイル比較", u"ファイルの内容には差異があります。" )
-                print u'Done.\n'
-                return
-
-            result = [None]
-
-            def jobCompareBinaryFile(job_item):
-
-                printFilenameLog( "binary" )
-
-                # ビジーインジケータ On
-                self.setProgressValue(None)
-
-                if result[0]==None and hasattr( items[0], "getFullpath" ) and hasattr( items[1], "getFullpath" ):
-                    try:
-                        result[0] = cmailer_filecmp.compareFile( items[0].getFullpath(), items[1].getFullpath(), schedule_handler=job_item.isCanceled )
-                    except cmailer_error.CanceledError:
-                        return
-                    
-                if result[0]==None:
-                    while True:
-                        if job_item.isCanceled() : break
-
-                        if job_item.waitPaused():
-                            self.setProgressValue(None)
-
-                        data0 = fd[0].read( 64 * 1024 )
-                        data1 = fd[1].read( 64 * 1024 )
-                        if not data0 and not data1 :
-                            result[0] = True
-                            break
-                        if data0!=data1 :
-                            result[0] = False
-                            break
-
-            def jobCompareBinaryFileFinished(job_item):
-
-                # ビジーインジケータ Off
-                self.clearProgress()
-
-                if not job_item.isCanceled():
-                    if result[0]:
-                        cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_OK, u"ファイル比較", u"ファイルの内容は同一です。" )
-                    else:
-                        cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_OK, u"ファイル比較", u"ファイルの内容には差異があります。" )
-
-                if job_item.isCanceled():
-                    print u'中断しました.\n'
-                else:
-                    print u'Done.\n'
-
-            job_item = ckit.JobItem( jobCompareBinaryFile, jobCompareBinaryFileFinished )
-            self.taskEnqueue( job_item, u"CompareBinary" )
-
-        else:
-        
-            printFilenameLog( "text" )
-    
-            def onEdit():
-                if not hasattr(items[0],"getFullpath") or not hasattr(items[1],"getFullpath") : return
-                if self.diff_editor==None : return
-                viewer.destroy()
-                if callable(self.diff_editor):
-                    self.diff_editor( items[0], items[1], location )
-                else:
-                    self.subThreadCall( ckit.shellExecute, ( None, None, self.diff_editor, '"%s" "%s"'% ( items[0].getFullpath(), items[1].getFullpath() ), location ) )
-
-            pos = self.centerOfWindowInPixel()
-            viewer = cmailer_diffviewer.DiffViewer( pos[0], pos[1], self.width(), self.height(), self, self.ini, u"diff", items[0], items[1], edit_handler=onEdit )
-            print u'Done.\n'
-
-    ## 左右のディレクトリを比較する
-    def command_DirCompare(self):
-
-        left_pane = self.left_pane
-        right_pane = self.right_pane
-        
-        left_location = left_pane.file_list.getLocation()
-        right_location = right_pane.file_list.getLocation()
-
-        for path in ( left_location, right_location ):
-            if not os.path.isdir(path):
-                print u"ディレクトリ比較が不可能なパス :", path
-                return
-
-        compare_list = [
-            ( u"C : 両方に存在",      u"両方に存在",      ( True,  None ) ),
-            ( u"O : 片方だけに存在",  u"片方だけに存在",  ( False, None ) ),
-            ( u"S : 内容が同じ",      u"内容が同じ",      ( None,  True ) ),
-            ( u"D : 内容が相違",      u"内容が相違",      ( None,  False ) ),
-            ( u"M : 片方または相違",  u"片方または相違",  ( False, False ) ),
-        ]
-
-        pos = self.centerOfWindowInPixel()
-        list_window = cmailer_listwindow.ListWindow( pos[0], pos[1], 5, 1, self.width()-5, self.height()-3, self, self.ini, u"ディレクトリ比較", compare_list, 0, onekey_decide=True )
-        self.enable(False)
-        list_window.messageLoop()
-        result = list_window.getResult()
-        self.enable(True)
-        self.activate()
-        list_window.destroy()
-
-        if result<0 : return
-
-        compare_name = compare_list[result][1]
-        select_common, select_same = compare_list[result][2]
-
-        left_items = []
-        right_items = []
-        
-        def jobCompare( job_item ):
-
-            print u'Compare : %s' % compare_name
-
-            # ビジーインジケータ On
-            self.setProgressValue(None)
-
-            def packListItem( location, filename ):
-                if type(filename)==type(''):
-                    filename = unicode(filename,'mbcs')
-                item = cmailer_filelist.item_Default(
-                    location,
-                    filename
-                    )
-                return item
-
-            def dump_compare( cmp, dirname ):
-
-                #print dirname, dirname, cmp.left_only
-
-                if select_common==True:
-
-                    for filename in cmp.common_files:
-                        if job_item.isCanceled() : return
-
-                        if job_item.waitPaused():
-                            self.setProgressValue(None)
-
-                        name = ckit.normPath(ckit.joinPath(dirname,filename))
-                        print "      Common :", name
-                        left_items.append( packListItem( left_location, name ) )
-                        right_items.append( packListItem( right_location, name ) )
-
-                elif select_common==False:
-
-                    for filename in cmp.left_only:
-                        if job_item.isCanceled() : return
-
-                        if job_item.waitPaused():
-                            self.setProgressValue(None)
-
-                        name = ckit.normPath(ckit.joinPath(dirname,filename))
-                        print "   Left Only :", name
-                        left_items.append( packListItem( left_location, name ) )
-
-                    for filename in cmp.right_only:
-                        if job_item.isCanceled() : return
-
-                        if job_item.waitPaused():
-                            self.setProgressValue(None)
-
-                        name = ckit.normPath(ckit.joinPath(dirname,filename))
-                        print "  Right Only :", name
-                        right_items.append( packListItem( right_location, name ) )
-
-                if select_same==True:
-
-                    for filename in cmp.same_files:
-                        if job_item.isCanceled() : return
-
-                        if job_item.waitPaused():
-                            self.setProgressValue(None)
-
-                        name = ckit.normPath(ckit.joinPath(dirname,filename))
-                        print "        Same :", name
-                        left_items.append( packListItem( left_location, name ) )
-                        right_items.append( packListItem( right_location, name ) )
-
-                elif select_same==False:
-
-                    for filename in cmp.diff_files:
-                        if job_item.isCanceled() : return
-
-                        if job_item.waitPaused():
-                            self.setProgressValue(None)
-
-                        name = ckit.normPath(ckit.joinPath(dirname,filename))
-                        print "      Differ :", name
-                        left_items.append( packListItem( left_location, name ) )
-                        right_items.append( packListItem( right_location, name ) )
-
-                for subdirname in cmp.common_dirs:
-                    if job_item.isCanceled() : return
-
-                    if job_item.waitPaused():
-                        self.setProgressValue(None)
-
-                    dump_compare( cmp.subdirs[subdirname], ckit.joinPath(dirname,subdirname) )
-
-            cmp = cmailer_filecmp.CompareDir( left_location, right_location, [], [] )
-            
-            try:
-                dump_compare( cmp, "" )
-            except Exception, e:
-                print u'ERROR : ディレクトリ比較に失敗'
-                print u"  %s" % unicode(str(e),'mbcs')
-                cmailer_debug.printErrorInfo()
-                job_item.cancel()
-
-            if job_item.isCanceled():
-                print u'中断しました.\n'
-            else:
-                print u'Done.\n'
-
-            # ビジーインジケータ Off
-            self.clearProgress()
-
-        def jobCompareFinished( job_item ):
-
-            if self.isQuitting() : return
-
-            result = [ True ]
-
-            def onKeyDown( vk, mod ):
-                if vk==VK_RETURN and mod==0:
-                    result[0] = True
-                    console_window.quit()
-                    return True
-                elif vk==VK_ESCAPE and mod==0:
-                    result[0] = False
-                    console_window.quit()
-                    return True
-
-            pos = self.centerOfWindowInPixel()
-            console_window = cmailer_consolewindow.ConsoleWindow( pos[0], pos[1], 60, 24, self, self.ini, u"Compare完了", onKeyDown )
-            self.enable(False)
-
-            console_window.write( u'Compare : %s\n\n' % compare_name )
-
-            console_window.write( u'Left:\n' )
-            for item in left_items:
-                console_window.write( u'  %s\n' % item.getName(), False )
-            console_window.write( u'\n' )
-
-            console_window.write( u'Right:\n' )
-            for item in right_items:
-                console_window.write( u'  %s\n' % item.getName(), False )
-            console_window.write( u'\n' )
-
-            console_window.write( u'比較結果をファイルリストに反映しますか？(Enter/Esc):\n' )
-
-            console_window.messageLoop()
-            self.enable(True)
-            self.activate()
-            console_window.destroy()
-
-            if not result[0] : return
-
-            left_lister = cmailer_filelist.lister_Custom( self, u"[compare] ", left_location, left_items )
-            left_pane.file_list.setLister( left_lister )
-            left_pane.file_list.applyItems()
-            left_pane.scroll_info = ckit.ScrollInfo()
-            left_pane.cursor = 0
-            left_pane.scroll_info.makeVisible( left_pane.cursor, self.fileListItemPaneHeight(), 1 )
-
-            right_lister = cmailer_filelist.lister_Custom( self, u"[compare] ", right_location, right_items )
-            right_pane.file_list.setLister( right_lister )
-            right_pane.file_list.applyItems()
-            right_pane.scroll_info = ckit.ScrollInfo()
-            right_pane.cursor = 0
-            right_pane.scroll_info.makeVisible( left_pane.cursor, self.fileListItemPaneHeight(), 1 )
-
-            self.paint(PAINT_LEFT)
-
-        self.appendHistory( left_pane, True )
-        self.appendHistory( right_pane, True )
-
-        job_item = ckit.JobItem( jobCompare, jobCompareFinished )
-        self.taskEnqueue( job_item, u"Compare" )
-
     ## ソートポリシーを設定する
     def command_SetSorter(self):
         pane = self.activePane()
@@ -4343,7 +3984,6 @@ class MainWindow( ckit.Window ):
             self.appendHistory( pane, True )
 
             self.refreshFileList( self.left_pane, True, True )
-            self.refreshFileList( self.right_pane, True, True )
             self.paint(PAINT_LEFT)
 
         else:
@@ -4467,7 +4107,6 @@ class MainWindow( ckit.Window ):
                     print "Done.\n"
 
                 self.refreshFileList( self.left_pane, True, True )
-                self.refreshFileList( self.right_pane, True, True )
                 self.paint(PAINT_LEFT)
 
             self.appendHistory( pane, True )
