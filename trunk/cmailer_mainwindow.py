@@ -266,9 +266,12 @@ class MainWindow( ckit.Window ):
         self.inbox_folder = cmailer_email.Folder( os.path.join( self.mbox_dirname, "inbox.mbox" ) )
 
         self.account = cmailer_email.Account(
+            self.ini,
             cmailer_email.Pop3Receiver(
-                    "pop.gmail.com", 995,
-                    self.ini.get( "ACCOUNT", "username" ), self.ini.get( "ACCOUNT", "password" )
+                self.ini.get( "ACCOUNT", "server" ),
+                self.ini.getint( "ACCOUNT", "port" ),
+                self.ini.get( "ACCOUNT", "username" ),
+                self.ini.get( "ACCOUNT", "password" )
             ),
             None
         )
@@ -1404,7 +1407,7 @@ class MainWindow( ckit.Window ):
             filename = u""
         else:
             dirname, filename = ckit.splitPath(path)
-        lister = cmailer_email.lister_Default(self,dirname)
+        lister = cmailer_email.lister_Folder(self.inbox_folder)
         self.jumpLister( pane, lister, filename )
 
     ## 左ペインのディレクトリを指定したパスにジャンプする
@@ -1535,7 +1538,7 @@ class MainWindow( ckit.Window ):
     def appendHistory( self, pane, mark=False ):
         item = pane.file_list.getItem(pane.cursor)
         lister = pane.file_list.getLister()
-        visible = isinstance( lister, cmailer_email.lister_Default )
+        visible = isinstance( lister, cmailer_email.lister_Folder )
         #pane.history.append( pane.file_list.getLocation(), item.getName(), visible, mark )
 
     def cursorFromHistory( self, file_list, history ):
@@ -2157,10 +2160,16 @@ class MainWindow( ckit.Window ):
         if not self.ini.has_option( "UPDATE", "last_checked_date" ):
             self.ini.set( "UPDATE", "last_checked_date", "0" )
 
+        if not self.ini.has_option( "ACCOUNT", "server" ):
+            self.ini.set( "ACCOUNT", "server", "" )
+        if not self.ini.has_option( "ACCOUNT", "port" ):
+            self.ini.set( "ACCOUNT", "port", "" )
         if not self.ini.has_option( "ACCOUNT", "username" ):
             self.ini.set( "ACCOUNT", "username", "" )
         if not self.ini.has_option( "ACCOUNT", "password" ):
             self.ini.set( "ACCOUNT", "password", "" )
+        if not self.ini.has_option( "ACCOUNT", "lastid" ):
+            self.ini.set( "ACCOUNT", "lastid", "0" )
 
         if not self.ini.has_option( "MISC", "default_keymap" ):
             self.ini.set( "MISC", "default_keymap", "106" )
@@ -2257,8 +2266,7 @@ class MainWindow( ckit.Window ):
 
         print cmailer_resource.startupString()
 
-        #self.jumpLister( self.left_pane, cmailer_email.lister_Default(self,os.getcwd()) )
-        self.jumpLister( self.left_pane, cmailer_email.lister_Folder( self.inbox_folder ) )
+        self.jumpLister( self.left_pane, cmailer_email.lister_Folder(self.inbox_folder) )
 
     #--------------------------------------------------------------------------
 
@@ -2721,7 +2729,7 @@ class MainWindow( ckit.Window ):
             print u"ERROR : ファイルパスはUNICODE形式である必要があります."
             return
 
-        self.jumpLister( pane, cmailer_email.lister_Default(self,newdirname) )
+        self.jumpLister( pane, cmailer_email.lister_Folder(self.inbox_folder) )
 
     ## 履歴リストを表示しジャンプする
     def command_JumpHistory(self):
@@ -2774,7 +2782,7 @@ class MainWindow( ckit.Window ):
 
         pane = self.activePane()
 
-        self.jumpLister( pane, cmailer_email.lister_Default(self,newdirname) )
+        self.jumpLister( pane, cmailer_email.lister_Folder(self.inbox_folder) )
 
     ## パスを入力しジャンプする
     def command_JumpInput(self):
@@ -2800,7 +2808,7 @@ class MainWindow( ckit.Window ):
         else:
             dirname, filename = ckit.splitPath(path)
 
-        self.jumpLister( pane, cmailer_email.lister_Default(self,dirname), filename )
+        self.jumpLister( pane, cmailer_email.lister_Folder(self.inbox_folder), filename )
 
     ## SearchやGrepの検索結果リストを表示しジャンプする
     def command_JumpFound(self):
@@ -2862,7 +2870,7 @@ class MainWindow( ckit.Window ):
             else:
                 dirname, filename = ckit.splitPath(path)
 
-            self.jumpLister( pane, cmailer_email.lister_Default(self,dirname), filename )
+            self.jumpLister( pane, cmailer_email.lister_Folder(self.inbox_folder), filename )
 
     ## インクリメンタルサーチを行う
     def command_IncrementalSearch(self):
