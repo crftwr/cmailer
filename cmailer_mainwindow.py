@@ -1270,9 +1270,6 @@ class MainWindow( ckit.Window ):
     def leftPaneWidth(self):
         return self.left_window_width
 
-    def rightPaneWidth(self):
-        return self.width() - self.left_window_width - 1
-
     def upperPaneHeight(self):
         return self.height() - self.log_window_height - 1
 
@@ -1287,9 +1284,6 @@ class MainWindow( ckit.Window ):
 
     def leftPaneRect(self):
         return ( 0, 0, self.left_window_width, self.height() - self.log_window_height - 1 )
-
-    def rightPaneRect(self):
-        return ( self.left_window_width+1, 0, self.width(), self.height() - self.log_window_height - 1 )
 
     def logPaneRect(self):
         return ( 0, self.height()-self.log_window_height-1, self.width(), self.height()-1 )
@@ -1341,18 +1335,9 @@ class MainWindow( ckit.Window ):
     def leftPane(self):
         return self.left_pane
 
-    def rightPane(self):
-        return self.right_pane
-
     def activePane(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self.left_pane
-        else:
-            assert(False)
-
-    def inactivePane(self):
-        if self.focus==MainWindow.FOCUS_LEFT:
-            return self.right_pane
         else:
             assert(False)
 
@@ -1360,21 +1345,10 @@ class MainWindow( ckit.Window ):
     def leftFileList(self):
         return self.left_pane.file_list
 
-    ## 右ペインの FileList オブジェクトを取得する
-    def rightFileList(self):
-        return self.right_pane.file_list
-
     ## アクティブペインの FileList オブジェクトを取得する
     def activeFileList(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self.left_pane.file_list
-        else:
-            assert(False)
-
-    ## アクティブでないほうのペインの FileList オブジェクトを取得する
-    def inactiveFileList(self):
-        if self.focus==MainWindow.FOCUS_LEFT:
-            return self.right_pane.file_list
         else:
             assert(False)
 
@@ -1389,21 +1363,10 @@ class MainWindow( ckit.Window ):
     def leftItems(self):
         return self._items(self.left_pane)
 
-    ## 右ペインのアイテムのリストを取得する
-    def rightItems(self):
-        return self._items(self.right_pane)
-
     ## アクティブペインのアイテムのリストを取得する
     def activeItems(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self._items(self.left_pane)
-        else:
-            assert(False)
-
-    ## アクティブではないほうのペインのアイテムのリストを取得する
-    def inactiveItems(self):
-        if self.focus==MainWindow.FOCUS_LEFT:
-            return self._items(self.right_pane)
         else:
             assert(False)
 
@@ -1419,21 +1382,10 @@ class MainWindow( ckit.Window ):
     def leftSelectedItems(self):
         return self._selectedItems(self.left_pane)
 
-    ## 右ペインの選択されているアイテムのリストを取得する
-    def rightSelectedItems(self):
-        return self._selectedItems(self.right_pane)
-
     ## アクティブペインの選択されているアイテムのリストを取得する
     def activeSelectedItems(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self._selectedItems(self.left_pane)
-        else:
-            assert(False)
-
-    ## アクティブではないほうのペインの選択されているアイテムのリストを取得する
-    def inactiveSelectedItems(self):
-        if self.focus==MainWindow.FOCUS_LEFT:
-            return self._selectedItems(self.right_pane)
         else:
             assert(False)
 
@@ -1444,21 +1396,10 @@ class MainWindow( ckit.Window ):
     def leftCursorItem(self):
         return self._cursorItem(self.left_pane)
 
-    ## 右ペインのカーソル位置のアイテムを取得する
-    def rightCursorItem(self):
-        return self._cursorItem(self.right_pane)
-
     ## アクティブペインのカーソル位置のアイテムを取得する
     def activeCursorItem(self):
         if self.focus==MainWindow.FOCUS_LEFT:
             return self._cursorItem(self.left_pane)
-        else:
-            assert(False)
-
-    ## アクティブではないほうのペインのカーソル位置のアイテムを取得する
-    def inactiveCursorItem(self):
-        if self.focus==MainWindow.FOCUS_LEFT:
-            return self._cursorItem(self.right_pane)
         else:
             assert(False)
 
@@ -1499,10 +1440,6 @@ class MainWindow( ckit.Window ):
     def leftJump( self, path ):
         self.jump(self.left_pane)
 
-    ## 右ペインのディレクトリを指定したパスにジャンプする
-    def rightJump( self, path ):
-        self.jump(self.right_pane,path)
-
     ## アクティブペインのディレクトリを指定したパスにジャンプする
     def activeJump( self, path ):
         if self.focus==MainWindow.FOCUS_LEFT:
@@ -1510,32 +1447,14 @@ class MainWindow( ckit.Window ):
         else:
             assert(False)
 
-    ## アクティブではないほうのペインのディレクトリを指定したパスにジャンプする
-    def inactiveJump( self, path ):
-        if self.focus==MainWindow.FOCUS_LEFT:
-            self.jump(self.right_pane,path)
-        else:
-            assert(False)
-
     ## 左ペインのディレクトリを指定したリスト機能を使ってジャンプする
     def leftJumpLister( self, lister, name=None, raise_error=False ):
         self.jumpLister( self.left_pane, lister, name, raise_error )
-
-    ## 右ペインのディレクトリを指定したリスト機能を使ってジャンプする
-    def rightJumpLister( self, lister, name=None, raise_error=False ):
-        self.jumpLister( self.right_pane, lister, name, raise_error )
 
     ## アクティブペインのディレクトリを指定したリスト機能を使ってジャンプする
     def activeJumpLister( self, lister, name=None, raise_error=False ):
         if self.focus==MainWindow.FOCUS_LEFT:
             self.jumpLister( self.left_pane, lister, name, raise_error )
-        else:
-            assert(False)
-
-    ## アクティブではないほうのペインのディレクトリを指定したリスト機能を使ってジャンプする
-    def inactiveJumpLister( self, lister, name=None, raise_error=False ):
-        if self.focus==MainWindow.FOCUS_LEFT:
-            self.jumpLister( self.right_pane, lister, name, raise_error )
         else:
             assert(False)
 
@@ -2021,7 +1940,6 @@ class MainWindow( ckit.Window ):
         self.keymap[ "Home" ] = self.command_SelectAllFiles
         self.keymap[ "S-A" ] = self.command_SelectAll
         self.keymap[ "S-Home" ] = self.command_SelectAll
-        self.keymap[ "C" ] = self.command_Copy
         self.keymap[ "E" ] = self.command_Edit
         self.keymap[ "S-E" ] = self.command_EditInput
         self.keymap[ "F" ] = self.command_IncrementalSearch
@@ -2033,12 +1951,8 @@ class MainWindow( ckit.Window ):
         self.keymap[ "S-J" ] = self.command_JumpInput
         self.keymap[ "C-J" ] = self.command_JumpFound
         self.keymap[ "Q" ] = self.command_Quit
-        self.keymap[ ckit.KeyEvent( ord('M'), 0, extra=1 ) ] = self.command_Move
         self.keymap[ ckit.KeyEvent( ord('M'), MODKEY_SHIFT, extra=1 ) ] = self.command_MoveInput
-        self.keymap[ "O" ] = self.command_ChdirActivePaneToOther
-        self.keymap[ "S-O" ] = self.command_ChdirInactivePaneToOther
         self.keymap[ "S" ] = self.command_SetSorter
-        self.keymap[ "W" ] = self.command_SelectCompare
         self.keymap[ "S-W" ] = self.command_CompareTools
         self.keymap[ "R" ] = self.command_Rename
         self.keymap[ "S-R" ] = self.command_BatchRename
@@ -2852,51 +2766,6 @@ class MainWindow( ckit.Window ):
     def command_Delete(self):
         pass
 
-    ## 選択されているアイテムを、もう片方のペインに対してコピーする
-    def command_Copy(self):
-        active_pane = self.activePane()
-        inactive_pane = self.inactivePane()
-
-        if not hasattr(inactive_pane.file_list.getLister(),"getCopyDst"):
-            return
-
-        items = []
-        for i in xrange(active_pane.file_list.numItems()):
-            item = active_pane.file_list.getItem(i)
-            if item.selected():
-                items.append(item)
-
-        if len(items)<=0 : return
-
-        if self.ini.getint("MISC","confirm_copy"):
-            result = cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_YESNO, u"コピーの確認", u"コピーしますか？" )
-            if result!=MessageBox.RESULT_YES : return
-
-        self._copyMoveCommon( active_pane, active_pane.file_list.getLister(), inactive_pane.file_list.getLister(), items, "c", active_pane.file_list.getFilter() )
-
-    ## 選択されているアイテムを、もう片方のペインに対して移動する
-    def command_Move(self):
-
-        active_pane = self.activePane()
-        inactive_pane = self.inactivePane()
-
-        if not hasattr(inactive_pane.file_list.getLister(),"getCopyDst"):
-            return
-
-        items = []
-        for i in xrange(active_pane.file_list.numItems()):
-            item = active_pane.file_list.getItem(i)
-            if item.selected() and hasattr(item,"delete"):
-                items.append(item)
-
-        if len(items)<=0 : return
-
-        if self.ini.getint("MISC","confirm_move"):
-            result = cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_YESNO, u"移動の確認", u"移動しますか？" )
-            if result!=MessageBox.RESULT_YES : return
-
-        self._copyMoveCommon( active_pane, active_pane.file_list.getLister(), inactive_pane.file_list.getLister(), items, "m", active_pane.file_list.getFilter() )
-
     ## 選択されているアイテムを、入力したディレクトリパスに移動する
     def command_MoveInput(self):
         pane = self.activePane()
@@ -3198,32 +3067,6 @@ class MainWindow( ckit.Window ):
                 dirname, filename = ckit.splitPath(path)
 
             self.jumpLister( pane, cmailer_filelist.lister_Default(self,dirname), filename )
-
-    ## アクティブではないペインと同じ場所に移動する
-    #
-    #  アクティブではないペインのカーソル位置のアイテムを調査し、
-    #  そのアイテムが存在するディレクトリに移動した上で、同じアイテムにカーソルを合わせます。
-    #
-    def command_ChdirActivePaneToOther(self):
-        active_pane = self.activePane()
-        inactive_pane = self.inactivePane()
-        cursor_item = inactive_pane.file_list.getItem(inactive_pane.cursor)
-
-        lister, name = inactive_pane.file_list.getLister().getCopy(cursor_item.getName())
-        self.jumpLister( active_pane, lister, name )
-
-    ## アクティブではないペインのカレントディレクトリを、アクティブなペイント同じ場所に移動する
-    #
-    #  アクティブなペインのカーソル位置のアイテムを調査し、アクティブではないペインのカレントディレクトリを
-    #  そのアイテムが存在するディレクトリに移動した上で、同じアイテムにカーソルを合わせます。
-    #
-    def command_ChdirInactivePaneToOther(self):
-        active_pane = self.activePane()
-        inactive_pane = self.inactivePane()
-        cursor_item = active_pane.file_list.getItem(active_pane.cursor)
-
-        lister, name = active_pane.file_list.getLister().getCopy(cursor_item.getName())
-        self.jumpLister( inactive_pane, lister, name )
 
     ## 入力した名前でディレクトリを作成する
     #
@@ -4033,38 +3876,6 @@ class MainWindow( ckit.Window ):
             item = pane.file_list.getItem(i)
             if file_filter(item):
                 pane.file_list.selectItem( i, True )
-
-        self.paint( PAINT_FOCUSED_ITEMS | PAINT_FOCUSED_HEADER )
-
-    ## 左右のペインで同じ名前のアイテムを選択する
-    def command_SelectCompare(self):
-
-        active_pane = self.activePane()
-        inactive_pane = self.inactivePane()
-
-        pos = self.centerOfFocusedPaneInPixel()
-        list_window = cmailer_listwindow.ListWindow( pos[0], pos[1], 5, 1, self.width()-5, self.height()-3, self, self.ini, u"比較選択", self.compare_list, 0, onekey_decide=True )
-        self.enable(False)
-        list_window.messageLoop()
-        result = list_window.getResult()
-        self.enable(True)
-        self.activate()
-        list_window.destroy()
-
-        if result<0 : return
-
-        file_compare = self.compare_list[result][1]
-        for i in xrange(active_pane.file_list.numItems()):
-            active_item = active_pane.file_list.getItem(i)
-            inactive_item = None
-            for j in xrange(inactive_pane.file_list.numItems()):
-                if active_item.getName().lower() == inactive_pane.file_list.getItem(j).getName().lower():
-                    inactive_item = inactive_pane.file_list.getItem(j)
-                    break
-            if not inactive_item : continue
-
-            if file_compare( active_item, inactive_item ):
-                active_pane.file_list.selectItem( i, True )
 
         self.paint( PAINT_FOCUSED_ITEMS | PAINT_FOCUSED_HEADER )
 
@@ -5068,7 +4879,6 @@ class MainWindow( ckit.Window ):
             self.bookmark.append( item.getFullpath() )
 
         self.refreshFileList( self.activePane(), True, True )
-        self.refreshFileList( self.inactivePane(), True, True )
         self.paint(PAINT_LEFT)
 
     def _bookmarkListCommon( self, local ):
