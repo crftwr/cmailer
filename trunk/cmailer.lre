@@ -10,12 +10,12 @@ cmailer_stdlib.py
 cmailer_usernamespace.py
 makefile.py
 
-cmemo_native/cmailer_native.cpp
-cmemo_native/cmailer_native.h
-cmemo_native/pythonutil.cpp
-cmemo_native/pythonutil.h
-cmemo_native/strutil.cpp
-cmemo_native/strutil.h
+cmailer_native/cmailer_native.cpp
+cmailer_native/cmailer_native.h
+cmailer_native/pythonutil.cpp
+cmailer_native/pythonutil.h
+cmailer_native/strutil.cpp
+cmailer_native/strutil.h
 
 ../ckit/ckit_const.py
 ../ckit/ckit_misc.py
