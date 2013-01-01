@@ -1,7 +1,6 @@
 ﻿import os
 #import copy
 import fnmatch
-#import time
 import threading
 
 import email.parser
@@ -14,12 +13,10 @@ from ckit.ckit_const import *
 import cmailer_native
 import cmailer_misc
 import cmailer_mainwindow
-#import cfiler_error
 import cmailer_debug
 
 ## @addtogroup email Email機能
 ## @{
-
 
 #--------------------------------------------------------------------
 
@@ -54,10 +51,10 @@ class Sender:
 
 class Email( mailbox.mboxMessage ):
 
-    def __init__( self, text ):
+    def __init__( self, message ):
     
-        msg = email.parser.Parser().parsestr(text)
-        mailbox.mboxMessage.__init__( self, msg )
+        #msg = email.parser.Parser().parsestr(text)
+        mailbox.mboxMessage.__init__( self, message )
 
         # Subject
         subject, encoding = email.Header.decode_header(self.get("Subject"))[0]
@@ -74,6 +71,10 @@ class Folder( mailbox.mbox ):
 
     def __init__( self, path ):
         mailbox.mbox.__init__( self, path )
+    
+    def __iter__(self):
+        for message in mailbox.mbox.__iter__(self):
+            yield Email(message)
 
 #--------------------------------------------------------------------
 
@@ -96,8 +97,8 @@ class Pop3Receiver( Receiver ):
         for i in xrange(num):
             message = pop3.retr(i+1)
             text = "\n".join(message[1])
-
-            yield Email(text)
+            msg = email.parser.Parser().parsestr(text)
+            yield Email(msg)
         
         pop3.quit()
 
@@ -146,7 +147,7 @@ class item_Base:
     def size(self):
         return 0
 
-    def _select( self, sel=None ):
+    def select( self, sel=None ):
         pass
 
     def selected(self):
@@ -220,12 +221,8 @@ class item_CommonPaint(item_Base):
 #
 #  通常の実在するファイルやディレクトリを意味するクラスです。\n\n
 #
-#  内骨格では、ファイルリストに表示されるアイテムを item_Xxxx という名前のクラスのオブジェクトで表現します。\n
+#  CraftMailerでは、ファイルリストに表示されるアイテムを item_Xxxx という名前のクラスのオブジェクトで表現します。\n
 #  
-#  @sa item_Zip
-#  @sa item_Tar
-#  @sa item_Archive
-#
 class item_Default(item_CommonPaint):
 
     def __init__( self, location, name, info=None, bookmark=False ):
@@ -242,7 +239,6 @@ class item_Default(item_CommonPaint):
 
         self._size = info[1]
         self._mtime = info[2]
-        self._attr = info[3]
 
         self._selected = False
         self._bookmark = bookmark
@@ -253,9 +249,6 @@ class item_Default(item_CommonPaint):
     def getName(self):
         return self.name
 
-    def getFullpath(self):
-        return os.path.join( self.location, self.name )
-
     def time(self):
         assert( type(self._mtime)==tuple )
         return self._mtime
@@ -263,7 +256,7 @@ class item_Default(item_CommonPaint):
     def size(self):
         return self._size
 
-    def _select( self, sel=None ):
+    def select( self, sel=None ):
         if sel==None:
             self._selected = not self._selected
         else:
@@ -312,8 +305,6 @@ class lister_Default(lister_LocalFS):
             return item
 
         #bookmark_items = self.main_window.bookmark.listDir(self.location)
-
-        cmailer_misc.checkNetConnection(self.location)
 
         fileinfo_list = cmailer_native.findFile( os.path.join(self.location,"*") )
         items = map( packListItem, fileinfo_list )
@@ -366,6 +357,117 @@ class lister_Custom(lister_LocalFS):
 
     def isLazy(self):
         return True
+
+#--------------------------------------------------------------------
+
+
+## Emailアイテム
+#
+#  Emailの１通のメッセージを意味するクラスです。\n\n
+#
+#  CraftMailerでは、ファイルリストに表示されるアイテムを item_Xxxx という名前のクラスのオブジェクトで表現します。\n
+#  
+class item_Email(item_Base):
+
+    def __init__( self, message ):
+    
+        self.message = message
+        
+        self.name = message.subject
+        self._size = 0
+        self._mtime = message.date
+
+        self._selected = False
+
+    def __unicode__(self):
+        return os.path.join( self.location, self.name )
+
+    def getName(self):
+        return self.name
+
+    def time(self):
+        assert( type(self._mtime)==tuple )
+        return self._mtime
+
+    def size(self):
+        return self._size
+
+    def select( self, sel=None ):
+        if sel==None:
+            self._selected = not self._selected
+        else:
+            self._selected = sel;
+
+    def selected(self):
+        return self._selected
+
+    def bookmark(self):
+        return False
+
+    def paint( self, window, x, y, width, cursor, itemformat, userdata ):
+
+        attr_fg=ckit.getColor("file_fg")
+
+        if self.selected():
+            attr_bg_gradation=( ckit.getColor("select_file_bg1"), ckit.getColor("select_file_bg2"), ckit.getColor("select_file_bg1"), ckit.getColor("select_file_bg2"))
+        elif self.bookmark():
+            attr_bg_gradation=( ckit.getColor("bookmark_file_bg1"), ckit.getColor("bookmark_file_bg2"), ckit.getColor("bookmark_file_bg1"), ckit.getColor("bookmark_file_bg2"))
+        else:
+            attr_bg_gradation = None
+
+        if cursor:
+            line0=( LINE_BOTTOM, ckit.getColor("file_cursor") )
+        else:
+            line0=None
+        
+        attr = ckit.Attribute( fg=attr_fg, bg_gradation=attr_bg_gradation, line0=line0 )
+
+        s = itemformat( window, self, width, userdata )
+        window.putString( x, y, width, 1, attr, s )
+
+
+# 汎用のメールのリスト機能
+class lister_Folder(lister_Base):
+
+    def __init__( self, folder ):
+        self.folder = folder
+
+    def destroy(self):
+        lister_Base.destroy(self)
+
+    def getLocation(self):
+        return u"mail"
+
+    def __call__( self ):
+        items = []
+        for message in self.folder:
+            items.append( item_Email( Email(message) ) )
+        return items
+
+    def cancel(self):
+        pass
+
+    def __unicode__(self):
+        return u"mail"
+
+    def isLazy(self):
+        return False
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #--------------------------------------------------------------------
 
@@ -428,7 +530,7 @@ def itemformat_NameExt( window, item, width, userdata ):
 #
 #  ワイルドカードを使った標準的なフィルタ機能です。\n\n
 #
-#  内骨格では、フィルタと呼ばれるオブジェクトを使って、ファイルリストのアイテムを絞り込んで表示することが出来ます。\n
+#  CraftMailerでは、フィルタと呼ばれるオブジェクトを使って、ファイルリストのアイテムを絞り込んで表示することが出来ます。\n
 #  フィルタは filter_Xxxx という名前のクラスのオブジェクトで表現します。\n
 #  
 #  @sa filter_Bookmark
@@ -459,7 +561,7 @@ class filter_Default:
 #
 #  ブックマークに登録されているアイテムのみを表示するためのフィルタ機能です。\n\n
 #
-#  内骨格では、フィルタと呼ばれるオブジェクトを使って、ファイルリストのアイテムを絞り込んで表示することが出来ます。\n
+#  CraftMailerでは、フィルタと呼ばれるオブジェクトを使って、ファイルリストのアイテムを絞り込んで表示することが出来ます。\n
 #  フィルタは filter_Xxxx という名前のクラスのオブジェクトで表現します。\n
 #  
 #  @sa filter_Default
@@ -482,7 +584,7 @@ class filter_Bookmark:
 #
 #  ファイル名を使ってアイテムをソートするための機能です。\n\n
 #
-#  内骨格では、ソータと呼ばれるオブジェクトを使って、ファイルリストのアイテムを並べ替えて表示することが出来ます。\n
+#  CraftMailerでは、ソータと呼ばれるオブジェクトを使って、ファイルリストのアイテムを並べ替えて表示することが出来ます。\n
 #  ソータは sorter_Xxxx という名前のクラスのオブジェクトで表現します。\n
 #  
 #  @sa sorter_ByExt
@@ -504,7 +606,7 @@ class sorter_ByName:
 #
 #  ファイルの拡張子を使ってアイテムをソートするための機能です。\n\n
 #
-#  内骨格では、ソータと呼ばれるオブジェクトを使って、ファイルリストのアイテムを並べ替えて表示することが出来ます。\n
+#  CraftMailerでは、ソータと呼ばれるオブジェクトを使って、ファイルリストのアイテムを並べ替えて表示することが出来ます。\n
 #  ソータは sorter_Xxxx という名前のクラスのオブジェクトで表現します。\n
 #  
 #  @sa sorter_ByName
@@ -528,7 +630,7 @@ class sorter_ByExt:
 #
 #  ファイルのサイズを使ってアイテムをソートするための機能です。\n\n
 #
-#  内骨格では、ソータと呼ばれるオブジェクトを使って、ファイルリストのアイテムを並べ替えて表示することが出来ます。\n
+#  CraftMailerでは、ソータと呼ばれるオブジェクトを使って、ファイルリストのアイテムを並べ替えて表示することが出来ます。\n
 #  ソータは sorter_Xxxx という名前のクラスのオブジェクトで表現します。\n
 #  
 #  @sa sorter_ByName
@@ -550,7 +652,7 @@ class sorter_BySize:
 #
 #  ファイルのタイムスタンプを使ってアイテムをソートするための機能です。\n\n
 #
-#  内骨格では、ソータと呼ばれるオブジェクトを使って、ファイルリストのアイテムを並べ替えて表示することが出来ます。\n
+#  CraftMailerでは、ソータと呼ばれるオブジェクトを使って、ファイルリストのアイテムを並べ替えて表示することが出来ます。\n
 #  ソータは sorter_Xxxx という名前のクラスのオブジェクトで表現します。\n
 #  
 #  @sa sorter_ByName
@@ -620,7 +722,7 @@ class FileList:
             for item in self.original_items:
                 try:
                     if old_items[item.name].selected():
-                        item._select(True)
+                        item.select(True)
                 except KeyError:
                     continue
 
@@ -670,7 +772,7 @@ class FileList:
 
         item = self.items[i]
         sel_prev = self.items[i].selected()
-        item._select(sel)
+        item.select(sel)
 
         if item.selected() != sel_prev:
             if item.selected():
