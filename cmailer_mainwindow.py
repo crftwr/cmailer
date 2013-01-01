@@ -19,19 +19,17 @@ import pyauto
 import ckit
 from ckit.ckit_const import *
 
-"""
-import cmailer_isearch
-import cmailer_listwindow
-import cmailer_grepwindow
-import cmailer_textviewer
-import cmailer_configmenu
-import cmailer_wallpaper
-import cmailer_misc
-import cmailer_native
-"""
+#import cmailer_grepwindow
+#import cmailer_textviewer
+#import cmailer_configmenu
+#import cmailer_wallpaper
+#import cmailer_misc
+#import cmailer_native
 
 import cmailer_email
 import cmailer_resource
+import cmailer_listwindow
+import cmailer_isearch
 import cmailer_msgbox
 import cmailer_statusbar
 import cmailer_usernamespace
@@ -981,13 +979,6 @@ class MainWindow( ckit.Window ):
 
             # ドラッグ＆ドロップの準備
             dnd_items = []
-            item_index = char_y-pane_rect[1]+pane.scroll_info.pos
-            if item_index<pane.file_list.numItems():
-                for i in xrange(pane.file_list.numItems()):
-                    item = pane.file_list.getItem(i)
-                    if item.selected():
-                        if hasattr(item,"getFullpath"):
-                            dnd_items.append( os.path.normpath(item.getFullpath()) )
 
             self.mouse_click_info = MouseInfo( "item", x=x, y=y, mod=mod, dnd_items=dnd_items )
 
@@ -1929,9 +1920,6 @@ class MainWindow( ckit.Window ):
         self.keymap[ "C-C" ] = self.command_SetClipboard_LogSelectedOrFilename
         self.keymap[ "C-S-C" ] = self.command_SetClipboard_Fullpath
         self.keymap[ "A-C" ] = self.command_SetClipboard_LogAll
-        self.keymap[ "B" ] = self.command_BookmarkListLocal
-        self.keymap[ "S-B" ] = self.command_BookmarkList
-        self.keymap[ "C-B" ] = self.command_Bookmark
         self.keymap[ "X" ] = self.command_CommandLine
         self.keymap[ "Z" ] = self.command_ConfigMenu
         self.keymap[ "S-Z" ] = self.command_ConfigMenu2
@@ -1991,7 +1979,7 @@ class MainWindow( ckit.Window ):
             ( u"Reload",           self.command_Reload ),
             ( u"About",            self.command_About ),
             ( u"Wallpaper",        self.command_Wallpaper ),
-            ( u"ReceiveTest",      self.command_ReceiveTest ),
+            ( u"Receive",          self.command_Receive ),
             ( u"_MemoryStat",      self.command_MemoryStat ),
             ( u"_RefererTree",     self.command_RefererTree ),
         ]
@@ -2269,7 +2257,8 @@ class MainWindow( ckit.Window ):
 
         print cmailer_resource.startupString()
 
-        self.jumpLister( self.left_pane, cmailer_email.lister_Default(self,os.getcwd()) )
+        #self.jumpLister( self.left_pane, cmailer_email.lister_Default(self,os.getcwd()) )
+        self.jumpLister( self.left_pane, cmailer_email.lister_Folder( self.inbox_folder ) )
 
     #--------------------------------------------------------------------------
 
@@ -2700,12 +2689,7 @@ class MainWindow( ckit.Window ):
         if len(items)<=0 : return
 
         def editItems():
-            for item in items:
-                if not hasattr(item,"getFullpath") : continue
-                if callable(self.editor):
-                    self.editor( item, (1,1), pane.file_list.getLocation() )
-                else:
-                    ckit.shellExecute( None, None, self.editor, '"%s"'% os.path.normpath(item.getFullpath()), pane.file_list.getLocation() )
+            pass
 
         self.appendHistory( pane, True )
 
@@ -2837,7 +2821,7 @@ class MainWindow( ckit.Window ):
             # ちらつきを防止するために ListWindow の破棄を遅延する
             list_window_old = list_window
 
-            list_items = map( lambda item : ckit.normPath(item.getFullpath()), pane.found_items )
+            list_items = map( lambda item : ckit.normPath(item.getName()), pane.found_items )
             
             def onStatusMessage( width, select ):
                 return u""
@@ -3334,13 +3318,7 @@ class MainWindow( ckit.Window ):
                 if result!=MessageBox.RESULT_YES : return
 
             def onEdit():
-                if not hasattr(item,"getFullpath") : return
-                scroll_pos = viewer.getVisibleRegion()
-                viewer.destroy()
-                if callable(self.editor):
-                    self.subThreadCall( self.editor, ( item, ( scroll_pos[0], scroll_pos[1] ), location ) )
-                else:
-                    self.subThreadCall( ckit.shellExecute, ( None, None, self.editor, '"%s"'%item.getFullpath(), location ) )
+                pass
 
             pos = self.centerOfWindowInPixel()
             viewer = cmailer_textviewer.TextViewer( pos[0], pos[1], self.width(), self.height(), self, self.ini, u"text viewer", item, edit_handler=onEdit )
@@ -3461,124 +3439,42 @@ class MainWindow( ckit.Window ):
 
         self.setStatusMessage( u"全てのログをクリップボードにコピーしました", 3000 )
 
-    ## カーソル位置のアイテムをブックマークに登録するか解除する
-    def command_Bookmark(self):
+    def command_Receive(self):
 
-        pane = self.activePane()
+        def jobReceive(job_item):
 
-        item = pane.file_list.getItem(pane.cursor)
-        if not hasattr(item,"getFullpath"): return
+            print "Receive begin"
 
-        dirname, filename = ckit.splitPath(item.getFullpath())
+            count = 0
 
-        if self.bookmark.listDir(dirname).has_key(filename.lower()):
-            self.bookmark.remove( item.getFullpath() )
-        else:
-            self.bookmark.append( item.getFullpath() )
+            self.inbox_folder.lock()
 
-        self.refreshFileList( self.activePane(), True, True )
-        self.paint(PAINT_LEFT)
+            # ビジーインジケータ On
+            self.setProgressValue(None)
 
-    def _bookmarkListCommon( self, local ):
+            try:
+                for email in self.account.receive():
+                    #print email.subject, time.strftime( "%Y/%m/%d %H:%M:%S", email.date )
+                    self.inbox_folder.add(email)
+                    count += 1
+                    if count >= 10 : break
+                self.inbox_folder.flush()
+            finally:
 
-        pane = self.activePane()
+                # ビジーインジケータ Off
+                self.clearProgress()
 
-        items = self.bookmark.getItems()
-        
-        if local:
-            location_lower = pane.file_list.getLocation().lower()
-            
-            def isLocalBookmark(item):
-                if len(item)>len(location_lower) and item.lower().startswith(location_lower):
-                    if location_lower[-1] in "\\/" or item[len(location_lower)] in "\\/":
-                        return True
-                return False        
-            
-            items = filter( isLocalBookmark, items )
+                self.inbox_folder.unlock()
 
-        if not len(items):
-            self.setStatusMessage( u"ブックマークがありません", 1000, error=True )
-            return
+            print "Receive end"
 
-        if local:
-            items = map( lambda item : (item[len(location_lower):].lstrip('\\/'),item), items )
-        else:
-            items = map( lambda item : (item,item), items )
+        def jobReceiveFinished(job_item):
+            self.refreshFileList( self.activePane(), True, True )
+            self.paint(PAINT_FOCUSED)
 
-        def onKeyDown( vk, mod ):
-            if vk==VK_DELETE and mod==0:
+        job_item = ckit.JobItem( jobReceive, jobReceiveFinished )
+        self.taskEnqueue( job_item, u"Receive" )
 
-                select = list_window.getResult()
-                self.bookmark.remove(items[select][1])
-                list_window.remove(select)
-
-                self.refreshFileList( pane, True, True )
-                self.paint(PAINT_FOCUSED)
-
-                return True
-
-        if local:
-            title = u"Bookmark (Local)"
-        else:
-            title = u"Bookmark (Global)"
-
-        def onStatusMessage( width, select ):
-            return u""
-
-        pos = self.centerOfWindowInPixel()
-        list_window = cmailer_listwindow.ListWindow( pos[0], pos[1], 5, 1, self.width()-5, self.height()-3, self, self.ini, title, items, initial_select=0, keydown_hook=onKeyDown, onekey_search=False, statusbar_handler=onStatusMessage )
-        self.enable(False)
-        list_window.messageLoop()
-        result = list_window.getResult()
-        self.enable(True)
-        self.activate()
-        list_window.destroy()
-
-        if result<0 : return
-        
-        if local:
-            fullpath = ckit.joinPath( pane.file_list.getLocation(), items[result][0] )
-        else:
-            fullpath = items[result][0]
-
-        self.bookmark.append(fullpath)
-        dirname, filename = ckit.splitPath(fullpath)
-
-        self.jumpLister( pane, cmailer_email.lister_Default(self,dirname), filename )
-
-    ## ブックマークの一覧を表示する(グローバル)
-    #
-    #  登録されている全てのブックマークを一覧表示します。
-    #
-    def command_BookmarkList(self):
-        self._bookmarkListCommon(False)
-
-    ## ブックマークの一覧を表示する(ローカル)
-    #
-    #  カレントディレクトリ以下のブックマークを一覧表示します。
-    #
-    def command_BookmarkListLocal(self):
-        self._bookmarkListCommon(True)
-
-    def command_ReceiveTest(self):
-
-        print "ReceiveTest"
-
-        count = 0
-
-        self.inbox_folder.lock()
-
-        try:
-            for email in self.account.receive():
-                print email.subject, time.strftime( "%Y/%m/%d %H:%M:%S", email.date )
-                self.inbox_folder.add(email)
-                count += 1
-                if count >= 10 : break
-            self.inbox_folder.flush()
-        finally:
-            self.inbox_folder.unlock()
-
-        print "ReceiveTest end"
 
     ## Pythonインタプリタのメモリの統計情報を出力する(デバッグ目的)
     def command_MemoryStat(self):
