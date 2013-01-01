@@ -296,7 +296,7 @@ class MainWindow( ckit.Window ):
         #self.jump_list = []
         #self.filter_list = []
         #self.select_filter_list = []
-        #self.sorter_list = []
+        self.sorter_list = []
         #self.association_list = []
         self.itemformat_list = []
         self.itemformat = cmailer_email.itemformat_Name_Ext_Size_YYMMDD_HHMMSS
@@ -1952,10 +1952,10 @@ class MainWindow( ckit.Window ):
         ]
 
         self.sorter_list = [
-            #( u"F : ファイル名",     cmailer_email.sorter_ByName(),       cmailer_email.sorter_ByName( order=-1 ) ),
-            #( u"E : 拡張子",         cmailer_email.sorter_ByExt(),        cmailer_email.sorter_ByExt( order=-1 ) ),
-            #( u"S : サイズ",         cmailer_email.sorter_BySize(),       cmailer_email.sorter_BySize( order=-1 ) ),
-            #( u"T : タイムスタンプ", cmailer_email.sorter_ByTimeStamp(),  cmailer_email.sorter_ByTimeStamp( order=-1 ) ),
+            ( u"F : ファイル名",     cmailer_email.sorter_ByName(),       cmailer_email.sorter_ByName( order=-1 ) ),
+            ( u"E : 拡張子",         cmailer_email.sorter_ByExt(),        cmailer_email.sorter_ByExt( order=-1 ) ),
+            ( u"S : サイズ",         cmailer_email.sorter_BySize(),       cmailer_email.sorter_BySize( order=-1 ) ),
+            ( u"T : タイムスタンプ", cmailer_email.sorter_ByTimeStamp(),  cmailer_email.sorter_ByTimeStamp( order=-1 ) ),
         ]
 
         self.association_list = [

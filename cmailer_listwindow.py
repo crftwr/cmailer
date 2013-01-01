@@ -110,8 +110,8 @@ class ListWindow( ckit.Window ):
         self.plane_isearch = None
         
         if statusbar_handler:
-            self.status_bar = cfiler_statusbar.StatusBar()
-            self.status_bar_layer = cfiler_statusbar.SimpleStatusBarLayer()
+            self.status_bar = cmailer_statusbar.StatusBar()
+            self.status_bar_layer = cmailer_statusbar.SimpleStatusBarLayer()
             self.status_bar.registerLayer(self.status_bar_layer)
 
             self.plane_statusbar = ckit.ThemePlane3x3( self, 'statusbar.png' )
@@ -130,7 +130,7 @@ class ListWindow( ckit.Window ):
             self.scroll_margin = 0
 
         try:
-            self.wallpaper = cfiler_wallpaper.Wallpaper(self)
+            self.wallpaper = cmailer_wallpaper.Wallpaper(self)
             self.wallpaper.copy( parent_window )
             self.wallpaper.adjust()
         except:
@@ -161,7 +161,7 @@ class ListWindow( ckit.Window ):
         self.keymap[ "Escape" ] = self.command_Cancel
         if not self.onekey_search:
             self.keymap[ "F" ] = self.command_IncrementalSearch
-        cfiler_usernamespace.call("configure_ListWindow",self)
+        cmailer_usernamespace.call("configure_ListWindow",self)
 
     ## リストの項目を１つ削除する
     #
@@ -536,7 +536,7 @@ class ListWindow( ckit.Window ):
     
         self.removeKeyMessage()
 
-        self.isearch = cfiler_isearch.IncrementalSearch(self.ini)
+        self.isearch = cmailer_isearch.IncrementalSearch(self.ini)
         self.keydown_hook_old = self.keydown_hook
         self.keydown_hook = onKeyDown
         if self.plane_isearch:
