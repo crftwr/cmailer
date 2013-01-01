@@ -433,18 +433,6 @@ class MainWindow( ckit.Window ):
     def onTimerSyncCall(self):
         self.synccall.check()
 
-    def onTimerAutoRefresh(self):
-    
-        if len(self.task_queue_stack)>0 : return
-
-        if not self.acquireUserInputOwnership(False) : return
-        try:
-            if self.left_pane.file_list.isChanged():
-                self.refreshFileList( self.left_pane, True, True )
-                self.paint(PAINT_LEFT)
-        finally:
-            self.releaseUserInputOwnership()
-
 
     ## サブスレッドで処理を実行する
     #
@@ -1076,9 +1064,7 @@ class MainWindow( ckit.Window ):
                     self.command_Enter()
 
         elif region==PAINT_LEFT_LOCATION:
-
-            if self.ini.getint( "MISC", "mouse_operation" ):
-                self.command_GotoParentDir()
+            pass
         
         elif region==PAINT_LOG:
             
@@ -1910,7 +1896,6 @@ class MainWindow( ckit.Window ):
         self.keymap[ "C-PageUp" ] = self.command_CursorTop
         self.keymap[ "C-PageDown" ] = self.command_CursorBottom
         self.keymap[ "C-Tab" ] = self.command_ActivateCmailerNext
-        self.keymap[ "Back" ] = self.command_GotoParentDir
         self.keymap[ "A-Up" ] = self.command_MoveSeparatorUp
         self.keymap[ "A-Down" ] = self.command_MoveSeparatorDown
         self.keymap[ "C-A-Up" ] = self.command_MoveSeparatorUpQuick
@@ -1933,20 +1918,14 @@ class MainWindow( ckit.Window ):
         self.keymap[ "S-A" ] = self.command_SelectAll
         self.keymap[ "S-Home" ] = self.command_SelectAll
         self.keymap[ "E" ] = self.command_Edit
-        self.keymap[ "S-E" ] = self.command_EditInput
         self.keymap[ "F" ] = self.command_IncrementalSearch
-        self.keymap[ "S-F" ] = self.command_Search
-        self.keymap[ "S-G" ] = self.command_Grep
         self.keymap[ "I" ] = self.command_Info
         self.keymap[ "H" ] = self.command_JumpHistory
         self.keymap[ "J" ] = self.command_JumpList
         self.keymap[ "S-J" ] = self.command_JumpInput
         self.keymap[ "C-J" ] = self.command_JumpFound
         self.keymap[ "Q" ] = self.command_Quit
-        self.keymap[ ckit.KeyEvent( ord('M'), MODKEY_SHIFT, extra=1 ) ] = self.command_MoveInput
         self.keymap[ "S" ] = self.command_SetSorter
-        self.keymap[ "R" ] = self.command_Rename
-        self.keymap[ "S-R" ] = self.command_BatchRename
         self.keymap[ "C-C" ] = self.command_SetClipboard_LogSelectedOrFilename
         self.keymap[ "C-S-C" ] = self.command_SetClipboard_Fullpath
         self.keymap[ "A-C" ] = self.command_SetClipboard_LogAll
@@ -1958,16 +1937,11 @@ class MainWindow( ckit.Window ):
         self.keymap[ "S-Z" ] = self.command_ConfigMenu2
         self.keymap[ "S-Colon" ] = self.command_SetFilter
         self.keymap[ "Colon" ] = self.command_SetFilterList
-        self.keymap[ "BackSlash" ] = self.command_GotoRootDir
         if default_keymap in ("101","106"):
-            self.keymap[ "D" ] = self.command_SelectDrive
             self.keymap[ "K" ] = self.command_Delete
             self.keymap[ "L" ] = self.command_View
-            self.keymap[ ckit.KeyEvent( ord('M'), 0, extra=0 ) ] = self.command_Mkdir
         elif default_keymap in ("101afx","106afx"):
             self.keymap[ "D" ] = self.command_Delete
-            self.keymap[ "K" ] = self.command_Mkdir
-            self.keymap[ "L" ] = self.command_SelectDrive
             self.keymap[ "V" ] = self.command_View
         if default_keymap in ("101","101afx"):
             self.keymap[ "Slash" ] = self.command_ContextMenu
@@ -2469,22 +2443,6 @@ class MainWindow( ckit.Window ):
             pane.scroll_info.pos += 1
         self.paint(PAINT_FOCUSED_ITEMS)
 
-    ## 親ディレクトリに移動する
-    def command_GotoParentDir(self):
-        pane = self.activePane()
-        name = pane.file_list.getItem(pane.cursor).name
-        try:
-            new_lister, select_name = pane.file_list.getLister().getParent()
-        except:
-            return
-        self.jumpLister( pane, new_lister, select_name )
-
-    ## ルートディレクトリに移動する
-    def command_GotoRootDir(self):
-        pane = self.activePane()
-        new_lister = pane.file_list.getLister().getRoot()
-        self.jumpLister( pane, new_lister )
-
     ## カーソル位置のアイテムの選択状態を切り替える
     def command_Select(self):
         pane = self.activePane()
@@ -2530,8 +2488,7 @@ class MainWindow( ckit.Window ):
         pane = self.activePane()
         for i in xrange(pane.file_list.numItems()):
             item = pane.file_list.getItem(i)
-            if not item.isdir():
-                pane.file_list.selectItem(i)
+            pane.file_list.selectItem(i)
         self.paint( PAINT_FOCUSED_ITEMS | PAINT_FOCUSED_HEADER )
 
     ## ファイルリスト中の全てのアイテムの選択を解除する
@@ -2643,26 +2600,16 @@ class MainWindow( ckit.Window ):
         location = pane.file_list.getLocation()
         item = pane.file_list.getItem(pane.cursor)
 
-        if hasattr(item,"getLink"):
-            link_entity = item.getLink()
-            if link_entity:
-                item = link_entity
+        ext = os.path.splitext(item.name)[1].lower()
 
-        if item.isdir():
-            new_lister = pane.file_list.getLister().getChild(item.getName())
-            self.jumpLister( pane, new_lister )
+        for association in self.association_list:
+            for pattern in association[0].split():
+                if fnmatch.fnmatch( item.name, pattern ):
+                    association[1](item)
+                    return
 
         else:
-            ext = os.path.splitext(item.name)[1].lower()
-
-            for association in self.association_list:
-                for pattern in association[0].split():
-                    if fnmatch.fnmatch( item.name, pattern ):
-                        association[1](item)
-                        return
-
-            else:
-                self._viewCommon( location, item )
+            self._viewCommon( location, item )
 
 
     ## カーソル位置のアイテムに対して、OSで関連付けられた処理を実行する
@@ -2727,34 +2674,6 @@ class MainWindow( ckit.Window ):
     def command_Delete(self):
         pass
 
-    ## 選択されているアイテムを、入力したディレクトリパスに移動する
-    def command_MoveInput(self):
-        pane = self.activePane()
-        items = []
-        for i in xrange(pane.file_list.numItems()):
-            item = pane.file_list.getItem(i)
-            if item.selected() and hasattr(item,"delete"):
-                items.append(item)
-
-        if len(items)<=0 : return
-
-
-        def statusString_IsDir( update_info ):
-            move_dst_location = ckit.joinPath( pane.file_list.getLocation(), update_info.text )
-            if update_info.text and os.path.isdir(move_dst_location):
-                return u"OK"
-            else:
-                return u"  "
-
-        result = self.commandLine( u"MoveTo", auto_complete=False, autofix_list=["\\/","."], candidate_handler=cmailer_misc.candidate_Filename(pane.file_list.getLocation()), status_handler=statusString_IsDir )
-        if result==None : return
-
-        move_dst_location = ckit.joinPath( pane.file_list.getLocation(), result )
-
-        child_lister = pane.file_list.getLister().getChild(result)
-        self._copyMoveCommon( pane, pane.file_list.getLister(), child_lister, items, "m", pane.file_list.getFilter() )
-        child_lister.destroy()
-
     ## 選択されているアイテムをエディタで編集する
     #
     #  editor が呼び出し可能オブジェクトであれば、それを呼び出します。
@@ -2767,10 +2686,6 @@ class MainWindow( ckit.Window ):
         items = []
         
         def appendItem(item):
-            if hasattr(item,"getLink"):
-                link_entity = item.getLink()
-                if link_entity:
-                    item = link_entity
             items.append(item)
         
         for i in xrange(pane.file_list.numItems()):
@@ -2786,7 +2701,6 @@ class MainWindow( ckit.Window ):
 
         def editItems():
             for item in items:
-                if item.isdir() : continue
                 if not hasattr(item,"getFullpath") : continue
                 if callable(self.editor):
                     self.editor( item, (1,1), pane.file_list.getLocation() )
@@ -2796,43 +2710,6 @@ class MainWindow( ckit.Window ):
         self.appendHistory( pane, True )
 
         self.subThreadCall( editItems, () )
-
-    ## 入力したファイル名でファイルを編集する
-    #
-    #  入力されたファイルが既存のファイルであれば、そのファイルを編集します。
-    #  入力されたファイルが存在しないファイル名であれば、新規のテキストファイルを作成し、それを編集します。
-    #
-    def command_EditInput(self):
-        pane = self.activePane()
-
-        if not hasattr(pane.file_list.getLister(),"touch"):
-            return
-
-        result = self.commandLine( u"Edit", auto_complete=False, autofix_list=["\\/","."], candidate_handler=cmailer_misc.candidate_Filename(pane.file_list.getLocation()) )
-        if result==None : return
-
-        try:
-            item = pane.file_list.getLister().touch(result)
-        except Exception, e:
-            print u'ERROR : 編集失敗'
-            print "  %s" % unicode(str(e),'mbcs')
-            cmailer_debug.printErrorInfo()
-            return
-        
-        if item.isdir():
-            return
-
-        def editItem():
-            if callable(self.editor):
-                self.editor( item, (1,1), pane.file_list.getLocation() )
-            else:
-                ckit.shellExecute( None, None, self.editor, '"%s"'%item.getFullpath(), pane.file_list.getLocation() )
-
-        self.appendHistory( pane, True )
-
-        self.subThreadCall( editItem, () )
-
-        self.paint(PAINT_FOCUSED)
 
     ## ジャンプリストを表示しジャンプする
     #
@@ -3003,141 +2880,6 @@ class MainWindow( ckit.Window ):
 
             self.jumpLister( pane, cmailer_email.lister_Default(self,dirname), filename )
 
-    ## 入力した名前でディレクトリを作成する
-    #
-    #  "1/2/3" のように、深いパスを入力することも出来ます。
-    #   Shiftを押しながらディレクトリ名を決定すると、ディレクトリを作った後その中に移動します。
-    #
-    def command_Mkdir(self):
-        pane = self.activePane()
-
-        if not hasattr(pane.file_list.getLister(),"mkdir"):
-            return
-
-        result, mod = self.commandLine( u"MakeDir", auto_complete=False, autofix_list=["\\/","."], return_modkey=True, candidate_handler=cmailer_misc.candidate_Filename(pane.file_list.getLocation()) )
-        if result==None : return
-
-        newdirname = result
-
-        self.subThreadCall( pane.file_list.getLister().mkdir, ( newdirname, sys.stdout.write ) )
-
-        self.appendHistory( pane, True )
-        
-        if mod==MODKEY_SHIFT:
-            self.activeJump(newdirname)
-        else:
-            self.subThreadCall( pane.file_list.refresh, () )
-            pane.file_list.applyItems()
-            pane.cursor = self.cursorFromName( pane.file_list, newdirname )
-            pane.scroll_info.makeVisible( pane.cursor, self.fileListItemPaneHeight(), 1 )
-            self.paint(PAINT_FOCUSED)
-
-        print "Done.\n"
-
-    ## ドライブを選択する
-    def command_SelectDrive(self):
-        pane = self.activePane()
-
-        show_detail = [False]
-        detail_mode = False
-
-        def onKeyDown( vk, mod ):
-            if vk==VK_SPACE and mod==0:
-                show_detail[0] = True
-                list_window.quit()
-                return True
-
-        while True:
-
-            current_drive = os.path.splitdrive( pane.file_list.getLocation() )[0]
-            initial_select = 0
-
-            items = []
-            items.append( "%s : %s" % ( "1", "Desktop" ) )
-            for drive_letter in ckit.getDrives():
-                
-                if detail_mode:
-                    drive_display_name = ckit.getDriveDisplayName( "%s:\\" % (drive_letter,) )
-                    drive_display_name = drive_display_name.replace(" (%s:)"%drive_letter,"")
-                    items.append( "%s : %s" % ( drive_letter, drive_display_name ) )
-                else:                        
-                    drive_display_type = ckit.getDriveType( "%s:\\" % (drive_letter,) )
-                    items.append( "%s : %s" % ( drive_letter, drive_display_type ) )
-                
-                if current_drive and current_drive[0].upper()==drive_letter:
-                    initial_select = len(items)-1
-
-            if detail_mode:
-                keydown_hook=None
-            else:
-                keydown_hook=onKeyDown    
-
-            show_detail = [False]
-            pos = self.centerOfFocusedPaneInPixel()
-            list_window = cmailer_listwindow.ListWindow( pos[0], pos[1], 5, 1, self.width()-5, self.height()-3, self, self.ini, u"ドライブ選択", items, initial_select=initial_select, onekey_decide=True, keydown_hook=keydown_hook )
-            self.enable(False)
-            list_window.messageLoop()
-            result = list_window.getResult()
-            self.enable(True)
-            self.activate()
-            list_window.destroy()
-            if show_detail[0]:
-                detail_mode = True
-                continue
-            break
-
-        if result<0 : return
-
-        drive_letter = items[result][0]
-
-        if drive_letter=='1':
-            newdirname = ckit.getDesktopPath()
-            lister = cmailer_email.lister_Default(self,newdirname)
-
-        else:
-            history_item = pane.history.findStartWith( "%s:" % drive_letter )
-            if history_item==None :
-                newdirname = "%s:\\" % drive_letter
-            else:
-                newdirname = history_item[0]
-            lister = cmailer_email.lister_Default(self,newdirname)
-            
-        # 見つかるまで親ディレクトリを遡る
-        def setListerAndGetParent(lister):
-            while True:
-                try:
-                    pane.file_list.setLister(lister)
-                    break
-                except Exception, set_lister_error:
-                    cmailer_debug.printErrorInfo()
-                    try:
-                        lister, child = lister.getParent()
-                    except cmailer_error.NotExistError:
-                        print u"移動失敗 : %s" % newdirname
-                        print set_lister_error
-                        return
-                    except Exception, get_parent_error:
-                        print u"移動失敗 : %s" % newdirname
-                        print get_parent_error
-                        return
-            
-            # 移動に成功したドライブに関して、存在しないブックマークを削除
-            try:
-                location = lister.getLocation()
-                root_location = ckit.rootPath(location)
-                self.bookmark.removeNotExists(root_location)
-            except:
-                cmailer_debug.printErrorInfo()
-
-        self.subThreadCall( setListerAndGetParent, (lister,) )
-        pane.file_list.applyItems()
-
-        pane.scroll_info = ckit.ScrollInfo()
-        pane.cursor = self.cursorFromHistory( pane.file_list, pane.history )
-        pane.scroll_info.makeVisible( pane.cursor, self.fileListItemPaneHeight(), 1 )
-
-        self.paint(PAINT_FOCUSED)
-
     ## インクリメンタルサーチを行う
     def command_IncrementalSearch(self):
 
@@ -3295,302 +3037,6 @@ class MainWindow( ckit.Window ):
 
         self.paint(PAINT_FOCUSED_ITEMS | PAINT_FOCUSED_FOOTER)
 
-    ## ファイル名検索を行う
-    def command_Search(self):
-
-        pane = self.activePane()
-
-        location = pane.file_list.getLocation()
-        if not os.path.isdir(location) : return
-
-        result = self.commandLine( u"Search", candidate_handler=self.search_history.candidateHandler, candidate_remove_handler=self.search_history.candidateRemoveHandler )
-        if result==None : return
-
-        self.search_history.append(result)
-
-        pattern = result
-        pattern_list = pattern.split()
-
-        items = []
-
-        def jobSearch( job_item ):
-
-            print u'Search : %s' % pattern
-
-            # ビジーインジケータ On
-            self.setProgressValue(None)
-            
-            filename_list = []
-
-            for root, dirs, files in os.walk( location ):
-
-                if job_item.isCanceled(): break
-                
-                if job_item.waitPaused():
-                    self.setProgressValue(None)
-
-                for name in files:
-                    if job_item.isCanceled(): break
-
-                    if job_item.waitPaused():
-                        self.setProgressValue(None)
-
-                    for pattern_item in pattern_list:
-                        if fnmatch.fnmatch( name, pattern_item ):
-                            path_from_here = ckit.normPath(os.path.join(root,name)[len(os.path.join(location,"")):])
-                            print "  ", path_from_here
-                            filename_list.append(path_from_here)
-                            break
-
-                for name in dirs:
-                    if job_item.isCanceled(): break
-
-                    if job_item.waitPaused():
-                        self.setProgressValue(None)
-
-                    for pattern_item in pattern_list:
-                        if fnmatch.fnmatch( name, pattern_item ):
-                            path_from_here = ckit.normPath(os.path.join(root,name)[len(os.path.join(location,"")):])
-                            print "  ", path_from_here
-                            filename_list.append(path_from_here)
-                            break
-
-            if job_item.isCanceled():
-                print u'中断しました.\n'
-            else:
-                print u'Done.\n'
-
-            def packListItem( filename ):
-                if type(filename)==type(''):
-                    filename = unicode(filename,'mbcs')
-
-                item = cmailer_email.item_Default(
-                    location,
-                    filename
-                    )
-
-                return item
-
-            items[:] = map( packListItem, filename_list )
-
-            # ビジーインジケータ Off
-            self.clearProgress()
-
-        def jobSearchFinished( job_item ):
-        
-            if self.isQuitting() : return
-
-            result = [ True ]
-
-            def onKeyDown( vk, mod ):
-                if vk==VK_RETURN and mod==0:
-                    result[0] = True
-                    console_window.quit()
-                    return True
-                elif vk==VK_ESCAPE and mod==0:
-                    result[0] = False
-                    console_window.quit()
-                    return True
-
-            pos = self.centerOfWindowInPixel()
-            console_window = cmailer_consolewindow.ConsoleWindow( pos[0], pos[1], 60, 24, self, self.ini, u"Search完了", onKeyDown )
-            self.enable(False)
-
-            console_window.write( u'Search : %s\n' % pattern )
-            for item in items:
-                console_window.write( u'  %s\n' % item.getName(), False )
-            console_window.write( u'\n' )
-            console_window.write( u'検索結果をファイルリストに反映しますか？(Enter/Esc):\n' )
-
-            console_window.messageLoop()
-            self.enable(True)
-            self.activate()
-            console_window.destroy()
-
-            if not result[0] : return
-
-            prefix = u"[search] "
-            new_lister = cmailer_email.lister_Custom( self, prefix, location, items )
-            pane.file_list.setLister( new_lister )
-            pane.file_list.applyItems()
-            pane.scroll_info = ckit.ScrollInfo()
-            pane.cursor = 0
-            pane.scroll_info.makeVisible( pane.cursor, self.fileListItemPaneHeight(), 1 )
-            pane.found_prefix = prefix
-            pane.found_location = location
-            pane.found_items = items
-            self.paint(PAINT_LEFT)
-
-        job_item = ckit.JobItem( jobSearch, jobSearchFinished )
-        self.taskEnqueue( job_item, u"Search" )
-
-    ## GREPを行う
-    def command_Grep(self):
-
-        pane = self.activePane()
-
-        location = pane.file_list.getLocation()
-        if not os.path.isdir(location) : return
-
-        item_filter = pane.file_list.getFilter()
-
-        pos = self.centerOfWindowInPixel()
-        grep_window = cmailer_grepwindow.GrepWindow( pos[0], pos[1], self, self.ini )
-        self.enable(False)
-        grep_window.messageLoop()
-        result = grep_window.getResult()
-        self.enable(True)
-        self.activate()
-        grep_window.destroy()
-
-        if result==None : return
-        pattern, recursive, regexp, ignorecase = result[0], result[1], result[2], result[3]
-
-        # Grepのエンコーディングは、速度を考慮して、UTF-8限定
-        pattern_utf8 = pattern.encode('utf-8')
-
-        if regexp:
-            try:
-                if ignorecase:
-                    re_pattern = re.compile( pattern_utf8, re.IGNORECASE )
-                else:
-                    re_pattern = re.compile( pattern_utf8 )
-            except Exception, e:
-                print u"正規表現のエラー :", e
-                return []
-        else:
-            if ignorecase:
-                pattern_utf8 = pattern_utf8.lower()
-
-        items = []
-
-        def jobGrep( job_item ):
-
-            print u'Grep : %s' % pattern
-
-            # ビジーインジケータ On
-            self.setProgressValue(None)
-
-            filename_list = []
-
-            for root, dirs, files in os.walk( location ):
-
-                if job_item.isCanceled(): break
-
-                if job_item.waitPaused():
-                    self.setProgressValue(None)
-
-                if not recursive : del dirs[:]
-
-                for filename in files:
-
-                    if job_item.isCanceled(): break
-
-                    if job_item.waitPaused():
-                        self.setProgressValue(None)
-
-                    if item_filter==None or item_filter( cmailer_email.item_Default(root,filename) ):
-
-                        fullpath = os.path.join( root, filename )
-                        
-                        try:
-                            fd = file( fullpath )
-
-                            lineno = 0
-                            for line in fd:
-                                lineno += 1
-                                hit = False
-                                if regexp:
-                                    if re_pattern.search(line):
-                                        hit=True
-                                else:
-
-                                    if ignorecase:
-                                        line = line.lower()
-
-                                    if line.find(pattern_utf8)>=0:
-                                        hit=True
-
-                                if hit:
-                                    path_from_here = ckit.normPath(fullpath[len(os.path.join(location,"")):])
-                                    filename_list.append(path_from_here)
-                                    print "  ", path_from_here
-                                    break
-                                    
-                        except IOError, e:
-                            print "  %s" % unicode(str(e),'mbcs')
-
-
-            if job_item.isCanceled():
-                print u'中断しました.\n'
-            else:
-                print u'Done.\n'
-
-            def packListItem( filename ):
-                if type(filename)==type(''):
-                    filename = unicode(filename,'mbcs')
-
-                item = cmailer_email.item_Default(
-                    location,
-                    filename
-                    )
-
-                return item
-
-            items[:] = map( packListItem, filename_list )
-
-            # ビジーインジケータ Off
-            self.clearProgress()
-
-        def jobGrepFinished( job_item ):
-
-            if self.isQuitting() : return
-
-            result = [ True ]
-
-            def onKeyDown( vk, mod ):
-                if vk==VK_RETURN and mod==0:
-                    result[0] = True
-                    console_window.quit()
-                    return True
-                elif vk==VK_ESCAPE and mod==0:
-                    result[0] = False
-                    console_window.quit()
-                    return True
-
-            pos = self.centerOfWindowInPixel()
-            console_window = cmailer_consolewindow.ConsoleWindow( pos[0], pos[1], 60, 24, self, self.ini, u"Grep完了", onKeyDown )
-            self.enable(False)
-
-            console_window.write( u'Grep : %s\n' % pattern )
-            for item in items:
-                console_window.write( u'  %s\n' % item.getName(), False )
-            console_window.write( u'\n' )
-            console_window.write( u'Grepの結果をファイルリストに反映しますか？(Enter/Esc):\n' )
-
-            console_window.messageLoop()
-            self.enable(True)
-            self.activate()
-            console_window.destroy()
-
-            if not result[0] : return
-
-            prefix = u"[grep] "
-            new_lister = cmailer_email.lister_Custom( self, prefix, location, items )
-            pane.file_list.setLister( new_lister )
-            pane.file_list.applyItems()
-            pane.scroll_info = ckit.ScrollInfo()
-            pane.cursor = 0
-            pane.scroll_info.makeVisible( pane.cursor, self.fileListItemPaneHeight(), 1 )
-            pane.found_prefix = prefix
-            pane.found_location = location
-            pane.found_items = items
-            self.paint(PAINT_LEFT)
-
-        self.appendHistory( pane, True )
-
-        job_item = ckit.JobItem( jobGrep, jobGrepFinished )
-        self.taskEnqueue( job_item, u"Grep" )
 
     ## 選択アイテムの統計情報を出力する
     def command_Info(self):
@@ -3617,8 +3063,7 @@ class MainWindow( ckit.Window ):
             for i in xrange(1,len(name_lines)):
                 print u"           %s" % name_lines[i]
             
-            if not item.isdir():
-                print u"サイズ   : %s (%d bytes)" % ( cmailer_misc.getFileSizeString(item.size()), item.size() )
+            print u"サイズ   : %s (%d bytes)" % ( cmailer_misc.getFileSizeString(item.size()), item.size() )
 
             t = item.time()
             print u"更新日時 : %04d/%02d/%02d %02d:%02d:%02d" % ( t[0]%10000, t[1], t[2], t[3], t[4], t[5] )
@@ -3638,16 +3083,6 @@ class MainWindow( ckit.Window ):
 
             # 最長のディレクトリ名を調べる
             max_dirname_len = 12
-            for item in items:
-                if job_item.isCanceled(): break
-
-                if job_item.waitPaused():
-                    self.setProgressValue(None)
-
-                if item.isdir():
-                    dirname_len = self.getStringWidth(item.getName())
-                    if max_dirname_len < dirname_len:
-                        max_dirname_len = dirname_len
 
             class Stat:
                 def __init__(self):
@@ -3673,45 +3108,11 @@ class MainWindow( ckit.Window ):
                 if job_item.waitPaused():
                     self.setProgressValue(None)
 
-                if item.isdir():
-                
-                    total_stat.num_dirs += 1
+                total_stat.num_files += 1
+                files_stat.num_files += 1
 
-                    stat = Stat()
-            
-                    for root, dirs, files in item.walk(False):
-                    
-                        if job_item.isCanceled(): break
-                        
-                        if job_item.waitPaused():
-                            self.setProgressValue(None)
-
-                        for dir in dirs:
-
-                            if item_filter==None or item_filter(dir):
-                                
-                                total_stat.num_dirs += 1
-                                stat.num_dirs += 1
-
-                        for file in files:
-
-                            if item_filter==None or item_filter(file):
-
-                                total_stat.num_files += 1
-                                stat.num_files += 1
-
-                                total_stat.total_size += file.size()
-                                stat.total_size += file.size()
-                    
-                    printStat( item.getName(), stat )
-
-                else:
-
-                    total_stat.num_files += 1
-                    files_stat.num_files += 1
-
-                    total_stat.total_size += item.size()
-                    files_stat.total_size += item.size()
+                total_stat.total_size += item.size()
+                files_stat.total_size += item.size()
                     
             if job_item.isCanceled():
                 print u'中断しました.\n'
@@ -3854,405 +3255,6 @@ class MainWindow( ckit.Window ):
         pane.scroll_info.makeVisible( pane.cursor, self.fileListItemPaneHeight(), 1 )
         self.paint(PAINT_FOCUSED_ITEMS)
 
-    ## アイテムのファイル名やタイムスタンプなどを変更する
-    #
-    #  アイテムが１つも選択されていないときと、そうでないときとで挙動が異なります。\n\n
-    #  アイテムが選択されていないとき、カーソル位置のアイテムの、ファイル名、タイムスタンプ、ファイル属性を変更するダイアログがポップアップします。\n\n
-    #  アイテムが選択されているとき、選択されているアイテムの、タイムスタンプ、ファイル属性を変更するダイアログがポップアップします。
-    #
-    def command_Rename(self):
-
-        pane = self.activePane()
-
-        items = []
-        for i in xrange(pane.file_list.numItems()):
-            item = pane.file_list.getItem(i)
-            if item.selected() and hasattr(item,"rename") and hasattr(item,"utime") and hasattr(item,"uattr"):
-                items.append(item)
-
-        if not pane.file_list.selected():
-
-            item = pane.file_list.getItem(pane.cursor)
-
-            if not (hasattr(item,"rename") and hasattr(item,"utime") and hasattr(item,"uattr")):
-                return
-
-            pos = self.centerOfFocusedPaneInPixel()
-            rename_window = cmailer_renamewindow.RenameWindow( pos[0], pos[1], self, self.ini, item )
-            self.enable(False)
-            rename_window.messageLoop()
-            result = rename_window.getResult()
-            self.enable(True)
-            self.activate()
-            rename_window.destroy()
-
-            if result==None : return
-            new_filename, new_timestamp, new_attribute = result[0], result[1], result[2]
-
-            new_filename = os.path.join( os.path.split( item.getName())[0], new_filename )
-            if new_filename!=item.getName():
-                print u'名前変更 : %s -> %s …' % (item.getName(), new_filename),
-                try:
-                    item.rename( new_filename )
-                except:
-                    print u'失敗'
-                    cmailer_debug.printErrorInfo()
-                    return
-                print u'完了'
-
-            old_timestamp = item.time()
-            if new_timestamp!=old_timestamp:
-                print u'タイムスタンプ変更 : %s …' % (new_filename),
-                try:
-                    item.utime((
-                        new_timestamp[0],
-                        new_timestamp[1],
-                        new_timestamp[2],
-                        new_timestamp[3],
-                        new_timestamp[4],
-                        new_timestamp[5]
-                        ))
-                except:
-                    print u'失敗'
-                    cmailer_debug.printErrorInfo()
-                else:
-                    print u'完了'
-
-            old_attribute = item.attr()
-            old_attribute &= (
-                ckit.FILE_ATTRIBUTE_READONLY |
-                ckit.FILE_ATTRIBUTE_SYSTEM |
-                ckit.FILE_ATTRIBUTE_HIDDEN |
-                ckit.FILE_ATTRIBUTE_ARCHIVE
-                )
-
-            if new_attribute!=old_attribute:
-                print u'属性変更 : %s …' % (new_filename),
-                try:
-                    item.uattr( new_attribute )
-                except:
-                    print u'失敗'
-                    cmailer_debug.printErrorInfo()
-                else:
-                    print u'完了'
-
-            print u'Done.\n'
-
-            self.appendHistory( pane, True )
-
-            self.refreshFileList( self.left_pane, True, True )
-            self.paint(PAINT_LEFT)
-
-        else:
-
-            if len(items)<=0 : return
-
-            pos = self.centerOfFocusedPaneInPixel()
-            rename_window = cmailer_renamewindow.MultiRenameWindow( pos[0], pos[1], self, self.ini, items )
-            self.enable(False)
-            rename_window.messageLoop()
-            result = rename_window.getResult()
-            self.enable(True)
-            self.activate()
-            rename_window.destroy()
-
-            if result==None : return
-            recursive, new_timestamp, new_case, new_attribute = result[0], result[1], result[2], result[3]
-            new_allcase, new_extcase = new_case[0], new_case[1]
-            new_readonly, new_system, new_hidden, new_archive = new_attribute[0], new_attribute[1], new_attribute[2], new_attribute[3]
-
-            class jobModifyInfo:
-
-                def __init__(job_self):
-                    pass
-
-                def updateFileInfo( job_self, item ):
-                
-                    if new_allcase!=1 or new_extcase!=1:
-                        
-                        body, ext = os.path.splitext(item.getName())
-
-                        if new_allcase==0:
-                            body = body.lower()
-                            ext = ext.lower()
-                        elif new_allcase==2:
-                            body = body.upper()
-                            ext = ext.upper()
-
-                        if new_extcase==0:
-                            ext = ext.lower()
-                        elif new_extcase==2:
-                            ext = ext.upper()
-
-                        new_filename = body + ext
-
-                        if new_filename!=item.getName():
-                            print u'名前変更 : %s -> %s …' % (item.getName(), new_filename),
-                            try:
-                                item.rename( new_filename )
-                            except:
-                                print u'失敗'
-                                cmailer_debug.printErrorInfo()
-                                return
-                            print u'完了'
-
-                    if new_timestamp:
-                        print u'タイムスタンプ変更 : %s …' % item.getName(),
-                        try:
-                            item.utime((
-                                new_timestamp[0],
-                                new_timestamp[1],
-                                new_timestamp[2],
-                                new_timestamp[3],
-                                new_timestamp[4],
-                                new_timestamp[5]
-                                ))
-                        except:
-                            print u'失敗'
-                            cmailer_debug.printErrorInfo()
-                        else:
-                            print u'完了'
-
-                    attribute = item.attr()
-
-                    if new_readonly==0 : attribute &= ~ckit.FILE_ATTRIBUTE_READONLY
-                    elif new_readonly==2 : attribute |= ckit.FILE_ATTRIBUTE_READONLY
-
-                    if new_system==0 : attribute &= ~ckit.FILE_ATTRIBUTE_SYSTEM
-                    elif new_system==2 : attribute |= ckit.FILE_ATTRIBUTE_SYSTEM
-
-                    if new_hidden==0 : attribute &= ~ckit.FILE_ATTRIBUTE_HIDDEN
-                    elif new_hidden==2 : attribute |= ckit.FILE_ATTRIBUTE_HIDDEN
-
-                    if new_archive==0 : attribute &= ~ckit.FILE_ATTRIBUTE_ARCHIVE
-                    elif new_archive==2 : attribute |= ckit.FILE_ATTRIBUTE_ARCHIVE
-
-                    print u'属性変更 : %s …' % item.getName(),
-                    try:
-                        item.uattr( attribute )
-                    except:
-                        print u'失敗'
-                        cmailer_debug.printErrorInfo()
-                    else:
-                        print u'完了'
-
-                def __call__( job_self, job_item ):
-
-                    # ビジーインジケータ On
-                    self.setProgressValue(None)
-
-                    for item in items:
-
-                        if job_item.isCanceled(): break
-
-                        if item.isdir():
-                            if recursive:
-                                for root, dirs, files in item.walk():
-                                    for file in files:
-                                        job_self.updateFileInfo( file )
-                        else:
-                            job_self.updateFileInfo(item)
-
-            def jobModifyInfoFinished(job_item):
-
-                # ビジーインジケータ Off
-                self.clearProgress()
-
-                if job_item.isCanceled():
-                    print u'中断しました.\n'
-                else:
-                    print "Done.\n"
-
-                self.refreshFileList( self.left_pane, True, True )
-                self.paint(PAINT_LEFT)
-
-            self.appendHistory( pane, True )
-
-            job_item = ckit.JobItem( jobModifyInfo(), jobModifyInfoFinished )
-            self.taskEnqueue( job_item, u"ファイル情報の変更" )
-
-    ## 一括リネームする
-    def command_BatchRename(self):
-
-        pane = self.activePane()
-
-        items = []
-        for i in xrange(pane.file_list.numItems()):
-            item = pane.file_list.getItem(i)
-            if item.selected() and hasattr(item,"rename"):
-                items.append(item)
-
-        if len(items)<=0 : return
-
-        pos = self.centerOfWindowInPixel()
-        batch_rename_window = cmailer_renamewindow.BatchRenameWindow( pos[0], pos[1], self, self.ini, items )
-        self.enable(False)
-        batch_rename_window.messageLoop()
-        result = batch_rename_window.getResult()
-        self.enable(True)
-        self.activate()
-        batch_rename_window.destroy()
-
-        if result==None : return
-        replace_before, replace_after, regexp, ignorecase = result[0], result[1], result[2], result[3]
-        
-        if len(replace_before)==0:
-            print u"ERROR : 置換前の文字列が未入力"
-            return
-
-        confirm = [ True ]
-
-        self.ini.set( "BATCHRENAME", "old", replace_before )
-        self.ini.set( "BATCHRENAME", "new", replace_after )
-        self.ini.set( "BATCHRENAME", "regexp", str(int(regexp)) )
-        self.ini.set( "BATCHRENAME", "ignorecase", str(int(ignorecase)) )
-
-        def onKeyDown( vk, mod ):
-            if vk==VK_RETURN and mod==0:
-                confirm[0] = True
-                console_window.quit()
-                return True
-            elif vk==VK_ESCAPE and mod==0:
-                confirm[0] = False
-                console_window.quit()
-                return True
-
-        class Rename:
-
-            def __init__( self, regexp, ignorecase, old, new, maxnum ):
-
-                self.regexp = regexp
-                self.ignorecase = ignorecase
-                self.old = old
-                self.new = new
-                self.number = 0
-                self.keta = math.log10(maxnum)+1
-
-                if self.regexp:
-                    if self.ignorecase:
-                        self.re_pattern = re.compile( self.old, re.IGNORECASE )
-                    else:
-                        self.re_pattern = re.compile( self.old )
-                else:
-                    self.re_pattern = None
-
-            def __call__(self,old_name):
-
-                new_name = u""
-
-                if self.regexp:
-                    re_result = self.re_pattern.match(old_name)
-                    if re_result and re_result.group(0)==old_name:
-                        pos = 0
-                        while pos<len(self.new):
-                            if self.new[pos]==u'\\' and pos+1<len(self.new):
-                                pos += 1
-                                if self.new[pos] in ( u'0', u'1', u'2', u'3', u'4', u'4', u'5', u'6', u'7', u'8', u'9' ):
-                                    new_name += re_result.group( int(self.new[pos]) )
-                                elif self.new[pos] == u'd':
-                                    fmt = "%0" + ("%d"%self.keta) + "d"
-                                    new_name += fmt % self.number
-                                elif old_name[pos]=='\\':
-                                    new_name += '\\'
-                            else:
-                                new_name += self.new[pos]
-                            pos += 1
-                    else:
-                        new_name = old_name
-                else:
-                    if self.ignorecase:
-                        old_name_lower = old_name.lower()
-                        old_lower = self.old.lower()
-                        pos = 0
-                        while pos<len(old_name):
-                            find_result = old_name_lower.find(old_lower,pos)
-                            if find_result>=0:
-                                new_name += old_name[ pos : find_result ]
-                                new_name += self.new
-                                pos = find_result + len(old_lower)
-                            else:
-                                new_name += old_name[ pos : ]
-                                break
-                    else:
-                        new_name = old_name.replace( self.old, self.new )
-                self.number += 1
-                return new_name
-
-            def resetNumbar(self):
-                self.number = 0
-
-        try:
-            rename = Rename( regexp, ignorecase, replace_before, replace_after, len(items) )
-        except re.error, e:
-            print u"正規表現のエラー :", e
-            return    
-
-        pos = self.centerOfWindowInPixel()
-        console_window = cmailer_consolewindow.ConsoleWindow( pos[0], pos[1], 60, 24, self, self.ini, u"変名の確認", onKeyDown )
-        self.enable(False)
-
-        console_window.write( u'一括変名:\n' )
-        for item in items:
-            old_name = item.getName()
-            new_name = rename(old_name)
-            if old_name != new_name:
-                console_window.write( u'  %s -> %s\n' % (old_name, new_name), False )
-            else:
-                console_window.write( u'  %s : 変更なし\n' % (old_name,), False )
-        console_window.write( u'\n' )
-        console_window.write( u'実行しますか？(Enter/Esc):\n' )
-
-        console_window.messageLoop()
-        self.enable(True)
-        self.activate()
-        console_window.destroy()
-
-        if not confirm[0] : return
-
-        rename.resetNumbar()
-
-        def jobBatchRename(job_item):
-
-            # ビジーインジケータ On
-            self.setProgressValue(None)
-
-            print u'一括変名:'
-            for item in items:
-
-                if job_item.isCanceled() : break
-
-                old_name = item.getName()
-                new_name = rename(old_name)
-                if old_name != new_name:
-                    print u'  %s -> %s …' % (old_name, new_name),
-                    try:
-                        item.rename(new_name)
-                    except:
-                        print u'失敗'
-                        cmailer_debug.printErrorInfo()
-                        job_item.cancel()
-                        break
-                    print u'完了'
-                else:
-                    print u'  %s … 変更なし' % (old_name,)
-
-        def jobBatchRenameFinished(job_item):
-
-            # ビジーインジケータ Off
-            self.clearProgress()
-
-            if job_item.isCanceled():
-                print u'中断しました.\n'
-            else:
-                print "Done.\n"
-
-            self.refreshFileList( self.left_pane, True, True )
-            self.paint(PAINT_LEFT)
-
-        self.appendHistory( pane, True )
-
-        job_item = ckit.JobItem( jobBatchRename, jobBatchRenameFinished )
-        self.taskEnqueue( job_item, u"一括変名" )
 
     ## コンテキストメニューをポップアップする
     def command_ContextMenu(self):
@@ -4325,7 +3327,7 @@ class MainWindow( ckit.Window ):
             wnd.setForeground()
 
     def _viewCommon( self, location, item ):
-        if not item.isdir() and hasattr(item,"open"):
+        if hasattr(item,"open"):
 
             if item.size() >= 32*1024*1024:
                 result = cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_YESNO, u"大きなファイルの閲覧", u"大きなファイルを閲覧しますか？(時間がかかる場合があります)" )

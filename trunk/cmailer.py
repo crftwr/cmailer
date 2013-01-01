@@ -1,6 +1,7 @@
 ﻿from ckit import *
 
 from cmailer_mainwindow import *
+from cmailer_email import *
 from cmailer_misc import *
 from cmailer_native import *
 
