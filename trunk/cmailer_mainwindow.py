@@ -2669,7 +2669,75 @@ class MainWindow( ckit.Window ):
     #  削除のデフォルト動作は、設定メニュー2で変更することが出来ます。
     #
     def command_Delete(self):
-        pass
+
+        pane = self.activePane()
+        item_filter = pane.file_list.getFilter()
+
+        items = []
+        
+        for i in xrange(pane.file_list.numItems()):
+            item = pane.file_list.getItem(i)
+            if item.selected() and hasattr(item,"delete"):
+                items.append(item)
+
+        if len(items):
+
+            result = cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_YESNO, u"削除の確認", u"削除しますか？" )
+            if result!=MessageBox.RESULT_YES : return
+
+            def deselectItem(item):
+                for i in xrange(pane.file_list.numItems()):
+                    if pane.file_list.getItem(i) is item:
+                        pane.file_list.selectItem(i,False)
+                        if pane == self.left_pane:
+                            region = PAINT_LEFT
+                        self.paint(region)
+                        return
+
+            def jobDelete( job_item ):
+                
+                # ビジーインジケータ On
+                self.setProgressValue(None)
+                
+                used_folder_set = set()
+                
+                for item in items:
+                
+                    def schedule():
+                        if job_item.isCanceled():
+                            return True
+                        if job_item.waitPaused():
+                            self.setProgressValue(None)
+                
+                    if schedule(): break
+                
+                    item.delete( used_folder_set, schedule, sys.stdout.write )
+                    if not job_item.isCanceled():
+                        deselectItem(item)
+                
+                print used_folder_set
+                
+                for folder in used_folder_set:
+                    folder.flush()
+
+            def jobDeleteFinished( job_item ):
+
+                # ビジーインジケータ Off
+                self.clearProgress()
+
+                if job_item.isCanceled():
+                    print u'中断しました.\n'
+                else:
+                    print "Done.\n"
+                    
+                self.refreshFileList( self.left_pane, True, True )
+                self.paint(PAINT_LEFT)
+
+            self.appendHistory( pane, True )
+
+            job_item = ckit.JobItem( jobDelete, jobDeleteFinished )
+            self.taskEnqueue( job_item, u"削除" )
+
 
     ## 選択されているアイテムをエディタで編集する
     #
@@ -3453,8 +3521,6 @@ class MainWindow( ckit.Window ):
 
             print "Receive begin"
 
-            count = 0
-
             self.inbox_folder.lock()
 
             # ビジーインジケータ On
@@ -3464,8 +3530,6 @@ class MainWindow( ckit.Window ):
                 for email in self.account.receive():
                     #print email.subject, time.strftime( "%Y/%m/%d %H:%M:%S", email.date )
                     self.inbox_folder.add(email)
-                    count += 1
-                    if count >= 10 : break
                 self.inbox_folder.flush()
             finally:
 

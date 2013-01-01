@@ -98,12 +98,14 @@ class Pop3Receiver( Receiver ):
         lastid = ini.getint( "ACCOUNT", "lastid" )
         
         pop3_list = pop3.list()[1]
+        print pop3_list
         
         for i in xrange( len(pop3_list) ):
 
             message_id, message_len = pop3_list[i].split(" ")
             
             if int(message_id) <= lastid:
+                print "Skip:", pop3_list[i]
                 continue
 
             message = pop3.retr(i+1)
@@ -218,8 +220,10 @@ class item_Empty(item_Base):
 #  
 class item_Email(item_Base):
 
-    def __init__( self, message ):
+    def __init__( self, folder, key, message ):
     
+        self.folder = folder
+        self.key = key
         self.message = message
         
         self.name = message.subject
@@ -274,6 +278,18 @@ class item_Email(item_Base):
         s = itemformat( window, self, width, userdata )
         window.putString( x, y, width, 1, attr, s )
 
+    def delete( self, used_folder_set, schedule_handler, log_writer=None ):
+
+        if not log_writer:
+            def logWriter(s) : pass
+            log_writer = logWriter
+
+        used_folder_set.add(self.folder)
+
+        log_writer( u'削除 : %s …' % self.name )
+        self.folder.remove(self.key)
+        log_writer( u'完了\n' )
+
 
 # 汎用のメールのリスト機能
 class lister_Folder(lister_Base):
@@ -289,8 +305,8 @@ class lister_Folder(lister_Base):
 
     def __call__( self ):
         items = []
-        for message in self.folder:
-            items.append( item_Email( Email(message) ) )
+        for key, message in self.folder.iteritems():
+            items.append( item_Email( self.folder, key, Email( message ) ) )
         return items
 
     def cancel(self):
