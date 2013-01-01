@@ -280,30 +280,15 @@ class MainWindow( ckit.Window ):
             pass
 
         self.left_pane = Pane()
-        """
-        self.left_pane.history = History()
-        self.left_pane.history.load( self.ini, "LEFTPANE" )
-        self.left_pane.found_prefix = u""
-        self.left_pane.found_location = u""
-        self.left_pane.found_items = []
-        self.left_pane.file_list = cmailer_filelist.FileList( self, cmailer_filelist.lister_Empty() )
+        #self.left_pane.history = History()
+        #self.left_pane.history.load( self.ini, "LEFTPANE" )
+        #self.left_pane.found_prefix = u""
+        #self.left_pane.found_location = u""
+        #self.left_pane.found_items = []
+        #self.left_pane.file_list = cmailer_filelist.FileList( self, cmailer_filelist.lister_Empty() )
         self.left_pane.scroll_info = ckit.ScrollInfo()
         self.left_pane.cursor = 0
         self.left_pane.footer_paint_hook = None
-        """
-
-        self.right_pane = Pane()
-        """
-        self.right_pane.history = History()
-        self.right_pane.history.load( self.ini, "RIGHTPANE" )
-        self.right_pane.found_prefix = u""
-        self.right_pane.found_location = u""
-        self.right_pane.found_items = []
-        self.right_pane.file_list = cmailer_filelist.FileList( self, cmailer_filelist.lister_Empty() )
-        self.right_pane.scroll_info = ckit.ScrollInfo()
-        self.right_pane.cursor = 0
-        self.right_pane.footer_paint_hook = None
-        """
 
         self.log_pane = Pane()
         self.log_pane.log = Log()
@@ -371,7 +356,6 @@ class MainWindow( ckit.Window ):
 
     def destroy(self):
         #self.left_pane.file_list.destroy()
-        #self.right_pane.file_list.destroy()
         cmailer_debug.disableBlockDetector()
         ckit.Window.destroy(self)
 
@@ -462,9 +446,6 @@ class MainWindow( ckit.Window ):
             if self.left_pane.file_list.isChanged():
                 self.refreshFileList( self.left_pane, True, True )
                 self.paint(PAINT_LEFT)
-            if self.right_pane.file_list.isChanged():
-                self.refreshFileList( self.right_pane, True, True )
-                self.paint(PAINT_RIGHT)
         finally:
             self.releaseUserInputOwnership()
 
@@ -802,7 +783,6 @@ class MainWindow( ckit.Window ):
         if self.log_window_height>height-4 : self.log_window_height=height-4
         if self.log_window_height<0 : self.log_window_height=0
         self.left_pane.scroll_info.makeVisible( self.left_pane.cursor, self.fileListItemPaneHeight(), 1 )
-        self.right_pane.scroll_info.makeVisible( self.right_pane.cursor, self.fileListItemPaneHeight(), 1 )
 
         self.updateThemePosSize()
         
@@ -929,7 +909,6 @@ class MainWindow( ckit.Window ):
         char_y = (y-offset_y) / char_h
         
         left_pane_rect = list( self.leftPaneRect() )
-        right_pane_rect = list( self.rightPaneRect() )
         log_pane_rect = list( self.logPaneRect() )
 
         region = None
@@ -946,17 +925,6 @@ class MainWindow( ckit.Window ):
                 region = PAINT_LEFT_ITEMS
                 pane = self.left_pane
                 pane_rect = [ left_pane_rect[0], left_pane_rect[1]+2, left_pane_rect[2], left_pane_rect[3]-1 ]
-
-        elif right_pane_rect[0]<=char_x<right_pane_rect[2] and right_pane_rect[1]<=char_y<right_pane_rect[3]:
-
-            if left_pane_rect[1]==char_y:
-                region = PAINT_RIGHT_LOCATION
-                pane = self.right_pane
-                pane_rect = [ right_pane_rect[0], right_pane_rect[1], right_pane_rect[2], right_pane_rect[1]+1 ]
-            elif left_pane_rect[1]+2<=char_y<left_pane_rect[3]-1:
-                region = PAINT_RIGHT_ITEMS
-                pane = self.right_pane
-                pane_rect = [ right_pane_rect[0], right_pane_rect[1]+2, right_pane_rect[2], right_pane_rect[3]-1 ]
 
         elif log_pane_rect[0]<=char_x<log_pane_rect[2] and log_pane_rect[1]<=char_y<log_pane_rect[3]:
             region = PAINT_LOG
@@ -1005,7 +973,7 @@ class MainWindow( ckit.Window ):
 
         char_x, char_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
 
-        if region==PAINT_LEFT_ITEMS or region==PAINT_RIGHT_ITEMS:
+        if region==PAINT_LEFT_ITEMS:
 
             if self.ini.getint( "MISC", "mouse_operation" ):
 
@@ -1071,7 +1039,7 @@ class MainWindow( ckit.Window ):
 
             char_x, char_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
 
-            if region==PAINT_LEFT_ITEMS or region==PAINT_RIGHT_ITEMS:
+            if region==PAINT_LEFT_ITEMS:
 
                 if self.ini.getint( "MISC", "mouse_operation" ):
         
@@ -1105,7 +1073,7 @@ class MainWindow( ckit.Window ):
 
         char_x, char_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
 
-        if region==PAINT_LEFT_ITEMS or region==PAINT_RIGHT_ITEMS:
+        if region==PAINT_LEFT_ITEMS:
 
             if self.ini.getint( "MISC", "mouse_operation" ):
 
@@ -1114,7 +1082,7 @@ class MainWindow( ckit.Window ):
                     pane.cursor = item_index
                     self.command_Enter()
 
-        elif region==PAINT_LEFT_LOCATION or region==PAINT_RIGHT_LOCATION:
+        elif region==PAINT_LEFT_LOCATION:
 
             if self.ini.getint( "MISC", "mouse_operation" ):
                 self.command_GotoParentDir()
@@ -1163,7 +1131,7 @@ class MainWindow( ckit.Window ):
 
         char_x, char_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
 
-        if region==PAINT_LEFT_ITEMS or region==PAINT_RIGHT_ITEMS:
+        if region==PAINT_LEFT_ITEMS:
 
             if self.ini.getint( "MISC", "mouse_operation" ):
 
@@ -1183,7 +1151,7 @@ class MainWindow( ckit.Window ):
 
             self.mouse_click_info = MouseInfo( "item", x=x, y=y, mod=mod, dnd_items=[] )
 
-        elif region==PAINT_LEFT_LOCATION or region==PAINT_RIGHT_LOCATION:
+        elif region==PAINT_LEFT_LOCATION:
             self.mouse_click_info = MouseInfo( "item", x=x, y=y, mod=mod, dnd_items=[] )
 
 
@@ -1201,10 +1169,10 @@ class MainWindow( ckit.Window ):
 
         char_x, char_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
 
-        if region==PAINT_LEFT_ITEMS or region==PAINT_RIGHT_ITEMS:
+        if region==PAINT_LEFT_ITEMS:
             if self.ini.getint( "MISC", "mouse_operation" ):
                 self.command_ContextMenu()
-        elif region==PAINT_LEFT_LOCATION or region==PAINT_RIGHT_LOCATION:
+        elif region==PAINT_LEFT_LOCATION:
             if self.ini.getint( "MISC", "mouse_operation" ):
                 self.command_ContextMenuDir()
 
@@ -1513,7 +1481,7 @@ class MainWindow( ckit.Window ):
         if pane==self.left_pane:
             self.paint(PAINT_LEFT)
         else:
-            self.paint(PAINT_RIGHT)
+            assert(False)
         self.appendHistory(pane)
     
     ## 指定したペインのディレクトリを指定したパスにジャンプする
@@ -1698,21 +1666,20 @@ class MainWindow( ckit.Window ):
         self.show_hidden = show
 
         self.refreshFileList( self.left_pane, True, True )
-        self.refreshFileList( self.right_pane, True, True )
 
         if show:
             self.setStatusMessage( u"隠しファイル : 表示", 3000 )
         else:
             self.setStatusMessage( u"隠しファイル : 非表示", 3000 )
 
-        self.paint(PAINT_LEFT | PAINT_RIGHT)
+        self.paint(PAINT_LEFT)
 
     def isHiddenFileVisible(self):
         return self.show_hidden
 
     def setItemFormat( self, itemformat ):
         self.itemformat = itemformat
-        self.paint(PAINT_LEFT | PAINT_RIGHT)
+        self.paint(PAINT_LEFT)
 
     #--------------------------------------------------------------------------
 
@@ -2090,12 +2057,10 @@ class MainWindow( ckit.Window ):
         if default_keymap in ("101","106"):
             self.keymap[ "D" ] = self.command_SelectDrive
             self.keymap[ "K" ] = self.command_Delete
-            self.keymap[ "S-K" ] = self.command_Delete2
             self.keymap[ "L" ] = self.command_View
             self.keymap[ ckit.KeyEvent( ord('M'), 0, extra=0 ) ] = self.command_Mkdir
         elif default_keymap in ("101afx","106afx"):
             self.keymap[ "D" ] = self.command_Delete
-            self.keymap[ "S-D" ] = self.command_Delete2
             self.keymap[ "K" ] = self.command_Mkdir
             self.keymap[ "L" ] = self.command_SelectDrive
             self.keymap[ "V" ] = self.command_View
@@ -2216,11 +2181,6 @@ class MainWindow( ckit.Window ):
 
         try:
             self.ini.add_section("LEFTPANE")
-        except ConfigParser.DuplicateSectionError:
-            pass
-
-        try:
-            self.ini.add_section("RIGHTPANE")
         except ConfigParser.DuplicateSectionError:
             pass
 
@@ -2414,7 +2374,6 @@ class MainWindow( ckit.Window ):
             self.ini.set( "GEOMETRY", "left_window_width", str(self.left_window_width) )
 
             #self.left_pane.history.save( self.ini, "LEFTPANE" )
-            #self.right_pane.history.save( self.ini, "RIGHTPANE" )
 
             #self.bookmark.save( self.ini, "BOOKMARK" )
 
@@ -2461,20 +2420,6 @@ class MainWindow( ckit.Window ):
             self.jumpLister( self.left_pane, cmailer_filelist.lister_Default(self,location), raise_error=True )
         except:
             self.jumpLister( self.left_pane, cmailer_filelist.lister_Default(self,os.getcwd()) )
-
-        # 右ペインの初期位置
-        if right_location:
-            location = right_location
-        else:
-            last_history = self.right_pane.history.findLastVisible()
-            if last_history:
-                location = last_history[0]
-            else:
-                location = os.getcwdu()
-        try:
-            self.jumpLister( self.right_pane, cmailer_filelist.lister_Default(self,location), raise_error=True )
-        except:
-            self.jumpLister( self.right_pane, cmailer_filelist.lister_Default(self,os.getcwd()) )
         """
 
     #--------------------------------------------------------------------------
@@ -2898,97 +2843,6 @@ class MainWindow( ckit.Window ):
         if self.log_pane.scroll_info.pos<0 : self.log_pane.scroll_info.pos=0
         self.paint( PAINT_LOG )
 
-    def _deleteCommon( self, use_builtin_delete ):
-
-        pane = self.activePane()
-        item_filter = pane.file_list.getFilter()
-
-        items = []
-        
-        if not use_builtin_delete:
-            for i in xrange(pane.file_list.numItems()):
-                item = pane.file_list.getItem(i)
-                if item.selected() and hasattr(item,"getFullpath"):
-                    items.append(item)
-            if not len(items):
-                use_builtin_delete = True
-        
-        if use_builtin_delete:
-            for i in xrange(pane.file_list.numItems()):
-                item = pane.file_list.getItem(i)
-                if item.selected() and hasattr(item,"delete"):
-                    items.append(item)
-
-        if len(items):
-
-            if use_builtin_delete:
-                result = cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_YESNO, u"削除の確認", u"削除しますか？" )
-                if result!=MessageBox.RESULT_YES : return
-            else:
-                result = cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_YESNO, u"ごみ箱への投棄の確認", u"ごみ箱へ投棄しますか？" )
-                if result!=MessageBox.RESULT_YES : return
-
-            def deselectItem(item):
-                for i in xrange(pane.file_list.numItems()):
-                    if pane.file_list.getItem(i) is item:
-                        pane.file_list.selectItem(i,False)
-                        if pane == self.left_pane:
-                            region = PAINT_LEFT
-                        else:
-                            region = PAINT_RIGHT
-                        self.paint(region)
-                        return
-
-            def jobDelete( job_item ):
-                
-                # ビジーインジケータ On
-                self.setProgressValue(None)
-                    
-                if use_builtin_delete:
-                    for item in items:
-                    
-                        def schedule():
-                            if job_item.isCanceled():
-                                return True
-                            if job_item.waitPaused():
-                                self.setProgressValue(None)
-                    
-                        if schedule(): break
-                    
-                        item.delete( True, item_filter, schedule, sys.stdout.write )
-                        if not job_item.isCanceled():
-                            deselectItem(item)
-                else:
-                    filename_list = []
-                    print u'ごみ箱に投棄 :'
-                    for item in items:
-                        filename = item.getFullpath()
-                        if item.isdir():
-                            print u'  ディレクトリ : %s' % filename
-                        else:
-                            print u'  ファイル : %s' % filename
-                        filename_list.append(filename)
-                    ckit.deleteFilesUsingRecycleBin( self.getHWND(), filename_list )
-
-            def jobDeleteFinished( job_item ):
-
-                # ビジーインジケータ Off
-                self.clearProgress()
-
-                if job_item.isCanceled():
-                    print u'中断しました.\n'
-                else:
-                    print "Done.\n"
-                    
-                self.refreshFileList( self.left_pane, True, True )
-                self.refreshFileList( self.right_pane, True, True )
-                self.paint( PAINT_LEFT | PAINT_RIGHT )
-
-            self.appendHistory( pane, True )
-
-            job_item = ckit.JobItem( jobDelete, jobDeleteFinished )
-            self.taskEnqueue( job_item, u"削除" )
-
     ## 選択されているアイテムを削除する(デフォルトの方法で)
     #
     #  CraftMailerでは、メーラに内蔵された削除機能と、OSのゴミ箱を使った削除を選択することができます。
@@ -2996,27 +2850,7 @@ class MainWindow( ckit.Window ):
     #  削除のデフォルト動作は、設定メニュー2で変更することが出来ます。
     #
     def command_Delete(self):
-        delete_behavior = self.ini.get( "MISC", "delete_behavior" )
-        if delete_behavior=="recycle_bin":
-            use_builtin_delete = False
-        elif delete_behavior=="builtin":
-            use_builtin_delete = True
-        self._deleteCommon(use_builtin_delete)
-
-    ## 選択されているアイテムを削除する(デフォルトではない方法で)
-    #
-    #  CraftMailerでは、メーラに内蔵された削除機能と、OSのゴミ箱を使った削除を選択することができます。
-    #  command_Delete2 ではデフォルトではない方法で削除を実行します。
-    #  削除のデフォルト動作は、設定メニュー2で変更することが出来ます。
-    #
-    def command_Delete2(self):
-        delete_behavior = self.ini.get( "MISC", "delete_behavior" )
-        if delete_behavior=="recycle_bin":
-            use_builtin_delete = False
-        elif delete_behavior=="builtin":
-            use_builtin_delete = True
-        use_builtin_delete = not use_builtin_delete
-        self._deleteCommon(use_builtin_delete)
+        pass
 
     ## 選択されているアイテムを、もう片方のペインに対してコピーする
     def command_Copy(self):
@@ -3202,25 +3036,12 @@ class MainWindow( ckit.Window ):
     def command_JumpHistory(self):
 
         left_pane = self.left_pane
-        right_pane = self.right_pane
 
         pane = self.activePane()
 
         def onKeyDown( vk, mod ):
 
-            if vk==VK_LEFT and mod==0:
-                if pane==right_pane:
-                    list_window.switch_left = True
-                    list_window.quit()
-                return True
-
-            elif vk==VK_RIGHT and mod==0:
-                if pane==left_pane:
-                    list_window.switch_right = True
-                    list_window.quit()
-                return True
-
-            elif vk==VK_DELETE and mod==0:
+            if vk==VK_DELETE and mod==0:
                 select = list_window.getResult()
                 pane.history.remove( items[select][0] )
                 del items[select]
@@ -3231,12 +3052,7 @@ class MainWindow( ckit.Window ):
 
         while True:
 
-            if pane==left_pane:
-                title = u"履歴(左)"
-            elif pane==right_pane:
-                title = u"履歴(右)"
-            else:
-                assert(0)
+            title = u"履歴"
 
             # ちらつきを防止するために ListWindow の破棄を遅延する
             list_window_old = list_window
@@ -3249,8 +3065,6 @@ class MainWindow( ckit.Window ):
 
             pos = self.centerOfWindowInPixel()
             list_window = cmailer_listwindow.ListWindow( pos[0], pos[1], 5, 1, self.width()-5, self.height()-3, self, self.ini, title, list_items, initial_select=0, onekey_search=False, keydown_hook=onKeyDown, statusbar_handler=onStatusMessage )
-            list_window.switch_left = False
-            list_window.switch_right = False
 
             if list_window_old:
                 list_window_old.destroy()
@@ -3259,13 +3073,6 @@ class MainWindow( ckit.Window ):
             list_window.messageLoop()
             result = list_window.getResult()
             self.enable(True)
-
-            if list_window.switch_left:
-                pane = left_pane
-            elif list_window.switch_right:
-                pane = right_pane
-            else:
-                break
 
         self.activate()
         list_window.destroy()
@@ -3834,7 +3641,7 @@ class MainWindow( ckit.Window ):
             pane.found_prefix = prefix
             pane.found_location = location
             pane.found_items = items
-            self.paint( PAINT_LEFT | PAINT_RIGHT )
+            self.paint(PAINT_LEFT)
 
         job_item = ckit.JobItem( jobSearch, jobSearchFinished )
         self.taskEnqueue( job_item, u"Search" )
@@ -4000,7 +3807,7 @@ class MainWindow( ckit.Window ):
             pane.found_prefix = prefix
             pane.found_location = location
             pane.found_items = items
-            self.paint( PAINT_LEFT | PAINT_RIGHT )
+            self.paint(PAINT_LEFT)
 
         self.appendHistory( pane, True )
 
@@ -4590,7 +4397,7 @@ class MainWindow( ckit.Window ):
             right_pane.cursor = 0
             right_pane.scroll_info.makeVisible( left_pane.cursor, self.fileListItemPaneHeight(), 1 )
 
-            self.paint( PAINT_LEFT | PAINT_RIGHT )
+            self.paint(PAINT_LEFT)
 
         self.appendHistory( left_pane, True )
         self.appendHistory( right_pane, True )
@@ -4726,7 +4533,7 @@ class MainWindow( ckit.Window ):
 
             self.refreshFileList( self.left_pane, True, True )
             self.refreshFileList( self.right_pane, True, True )
-            self.paint( PAINT_LEFT | PAINT_RIGHT )
+            self.paint(PAINT_LEFT)
 
         else:
 
@@ -4850,7 +4657,7 @@ class MainWindow( ckit.Window ):
 
                 self.refreshFileList( self.left_pane, True, True )
                 self.refreshFileList( self.right_pane, True, True )
-                self.paint( PAINT_LEFT | PAINT_RIGHT )
+                self.paint(PAINT_LEFT)
 
             self.appendHistory( pane, True )
 
@@ -5033,8 +4840,7 @@ class MainWindow( ckit.Window ):
                 print "Done.\n"
 
             self.refreshFileList( self.left_pane, True, True )
-            self.refreshFileList( self.right_pane, True, True )
-            self.paint( PAINT_LEFT | PAINT_RIGHT )
+            self.paint(PAINT_LEFT)
 
         self.appendHistory( pane, True )
 
@@ -5263,7 +5069,7 @@ class MainWindow( ckit.Window ):
 
         self.refreshFileList( self.activePane(), True, True )
         self.refreshFileList( self.inactivePane(), True, True )
-        self.paint( PAINT_LEFT | PAINT_RIGHT )
+        self.paint(PAINT_LEFT)
 
     def _bookmarkListCommon( self, local ):
 
