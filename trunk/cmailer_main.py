@@ -19,8 +19,6 @@ import cmailer_resource
 
 debug = False
 profile = False
-left_location = None
-right_location = None
 
 option_list, args = getopt.getopt( ckit.getArgv()[1:], "dpL:R:" )
 for option in option_list:
@@ -28,10 +26,6 @@ for option in option_list:
         debug = True
     elif option[0]=="-p":
         profile = True
-    elif option[0]=="-L":
-        left_location = option[1]
-    elif option[0]=="-R":
-        right_location = option[1]
 
 if __name__ == "__main__":
 
@@ -71,7 +65,7 @@ if __name__ == "__main__":
 
     _main_window.configure()
 
-    _main_window.startup( left_location, right_location )
+    _main_window.startup()
 
     _main_window.topLevelMessageLoop()
     

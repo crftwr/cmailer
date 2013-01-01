@@ -251,7 +251,6 @@ class MainWindow( ckit.Window ):
         self.updateHotKey()
 
         self.focus = MainWindow.FOCUS_LEFT
-        self.left_window_width = self.ini.getint( "GEOMETRY", "left_window_width" )
         self.log_window_height = self.ini.getint( "GEOMETRY", "log_window_height" )
 
         self.show_hidden = False
@@ -285,7 +284,7 @@ class MainWindow( ckit.Window ):
         #self.left_pane.found_prefix = u""
         #self.left_pane.found_location = u""
         #self.left_pane.found_items = []
-        #self.left_pane.file_list = cmailer_filelist.FileList( self, cmailer_filelist.lister_Empty() )
+        self.left_pane.file_list = cmailer_email.FileList( self, cmailer_email.lister_Empty() )
         self.left_pane.scroll_info = ckit.ScrollInfo()
         self.left_pane.cursor = 0
         self.left_pane.footer_paint_hook = None
@@ -296,20 +295,17 @@ class MainWindow( ckit.Window ):
         self.log_pane.selection = [ [ 0, 0 ], [ 0, 0 ] ]
 
         self.keymap = ckit.Keymap()
-        """
-        self.jump_list = []
-        self.filter_list = []
-        self.select_filter_list = []
-        self.compare_list = []
-        self.compare_tool_list = []
-        self.sorter_list = []
-        self.association_list = []
+        #self.jump_list = []
+        #self.filter_list = []
+        #self.select_filter_list = []
+        #self.sorter_list = []
+        #self.association_list = []
         self.itemformat_list = []
-        self.itemformat = cmailer_filelist.itemformat_Name_Ext_Size_YYMMDD_HHMMSS
-        self.editor = u"notepad.exe"
-        self.diff_editor = None
-        self.commandline_list = []
-        """
+        self.itemformat = cmailer_email.itemformat_Name_Ext_Size_YYMMDD_HHMMSS
+        #self.editor = u"notepad.exe"
+        #self.diff_editor = None
+        #self.commandline_list = []
+
         self.commandline_history = cmailer_history.History(1000)
         self.commandline_history.load( self.ini, "COMMANDLINE" )
         """
@@ -779,7 +775,6 @@ class MainWindow( ckit.Window ):
 
         if not self.initialized : return
         
-        if self.left_window_width>width-1 : self.left_window_width=width-1
         if self.log_window_height>height-4 : self.log_window_height=height-4
         if self.log_window_height<0 : self.log_window_height=0
         self.left_pane.scroll_info.makeVisible( self.left_pane.cursor, self.fileListItemPaneHeight(), 1 )
@@ -801,10 +796,8 @@ class MainWindow( ckit.Window ):
                 return True
 
         selected = 0
-        """
         if pane.file_list.selected():
             selected = 1
-        """
 
         try:
             func = self.keymap.table[ ckit.KeyEvent(vk,mod,extra=selected) ]
@@ -1268,7 +1261,7 @@ class MainWindow( ckit.Window ):
         self.synccall( addConnection, (self.getHWND(), remote_resource_name) )
             
     def leftPaneWidth(self):
-        return self.left_window_width
+        return self.width()
 
     def upperPaneHeight(self):
         return self.height() - self.log_window_height - 1
@@ -1283,7 +1276,7 @@ class MainWindow( ckit.Window ):
         return self.upperPaneHeight() - 3
 
     def leftPaneRect(self):
-        return ( 0, 0, self.left_window_width, self.height() - self.log_window_height - 1 )
+        return ( 0, 0, self.width(), self.height() - self.log_window_height - 1 )
 
     def logPaneRect(self):
         return ( 0, self.height()-self.log_window_height-1, self.width(), self.height()-1 )
@@ -1417,7 +1410,8 @@ class MainWindow( ckit.Window ):
         if name:
             pane.cursor = self.cursorFromName( pane.file_list, name )
         else:
-            pane.cursor = self.cursorFromHistory( pane.file_list, pane.history )
+            #pane.cursor = self.cursorFromHistory( pane.file_list, pane.history )
+            pane.cursor = 0
         pane.scroll_info.makeVisible( pane.cursor, self.fileListItemPaneHeight(), 1 )
         if pane==self.left_pane:
             self.paint(PAINT_LEFT)
@@ -1433,7 +1427,7 @@ class MainWindow( ckit.Window ):
             filename = u""
         else:
             dirname, filename = ckit.splitPath(path)
-        lister = cmailer_filelist.lister_Default(self,dirname)
+        lister = cmailer_email.lister_Default(self,dirname)
         self.jumpLister( pane, lister, filename )
 
     ## 左ペインのディレクトリを指定したパスにジャンプする
@@ -1564,8 +1558,8 @@ class MainWindow( ckit.Window ):
     def appendHistory( self, pane, mark=False ):
         item = pane.file_list.getItem(pane.cursor)
         lister = pane.file_list.getLister()
-        visible = isinstance( lister, cmailer_filelist.lister_Default )
-        pane.history.append( pane.file_list.getLocation(), item.getName(), visible, mark )
+        visible = isinstance( lister, cmailer_email.lister_Default )
+        #pane.history.append( pane.file_list.getLocation(), item.getName(), visible, mark )
 
     def cursorFromHistory( self, file_list, history ):
         history_item = history.find( file_list.getLocation() )
@@ -1731,7 +1725,6 @@ class MainWindow( ckit.Window ):
                 option |= PAINT_LEFT_FOOTER
 
         if option & PAINT_LEFT:
-            """
             if self.focus==MainWindow.FOCUS_LEFT:
                 cursor = self.left_pane.cursor
             else:
@@ -1754,7 +1747,6 @@ class MainWindow( ckit.Window ):
                     self.left_pane.footer_paint_hook( x, y+height-1, width, 1, self.left_pane.file_list )
                 else:
                     self._paintFileListFooterInfo( x, y+height-1, width, 1, self.left_pane.file_list )
-            """
 
         if option & PAINT_LOG:
             if self.logPaneHeight()>0:
@@ -1953,7 +1945,6 @@ class MainWindow( ckit.Window ):
         self.keymap[ "Q" ] = self.command_Quit
         self.keymap[ ckit.KeyEvent( ord('M'), MODKEY_SHIFT, extra=1 ) ] = self.command_MoveInput
         self.keymap[ "S" ] = self.command_SetSorter
-        self.keymap[ "S-W" ] = self.command_CompareTools
         self.keymap[ "R" ] = self.command_Rename
         self.keymap[ "S-R" ] = self.command_BatchRename
         self.keymap[ "C-C" ] = self.command_SetClipboard_LogSelectedOrFilename
@@ -1998,34 +1989,23 @@ class MainWindow( ckit.Window ):
         self.select_filter_list = [
         ]
 
-        self.compare_list = [
-            #( u"F : 気にしない",                    cmailer_filelist.compare_Default() ),
-            #( u"S : サイズが同じ",                  cmailer_filelist.compare_Default(cmp_size=0) ),
-            #( u"T : タイムスタンプが同じ",          cmailer_filelist.compare_Default(cmp_timestamp=0) ),
-            #( u"A : サイズ/タイムスタンプが同じ",   cmailer_filelist.compare_Default(cmp_size=0,cmp_timestamp=0) ),
-            #( u"M : 選択されている",                cmailer_filelist.compare_Selected() ),
-        ]
-        
-        self.compare_tool_list = [
-        ]
-
         self.sorter_list = [
-            #( u"F : ファイル名",     cmailer_filelist.sorter_ByName(),       cmailer_filelist.sorter_ByName( order=-1 ) ),
-            #( u"E : 拡張子",         cmailer_filelist.sorter_ByExt(),        cmailer_filelist.sorter_ByExt( order=-1 ) ),
-            #( u"S : サイズ",         cmailer_filelist.sorter_BySize(),       cmailer_filelist.sorter_BySize( order=-1 ) ),
-            #( u"T : タイムスタンプ", cmailer_filelist.sorter_ByTimeStamp(),  cmailer_filelist.sorter_ByTimeStamp( order=-1 ) ),
+            #( u"F : ファイル名",     cmailer_email.sorter_ByName(),       cmailer_email.sorter_ByName( order=-1 ) ),
+            #( u"E : 拡張子",         cmailer_email.sorter_ByExt(),        cmailer_email.sorter_ByExt( order=-1 ) ),
+            #( u"S : サイズ",         cmailer_email.sorter_BySize(),       cmailer_email.sorter_BySize( order=-1 ) ),
+            #( u"T : タイムスタンプ", cmailer_email.sorter_ByTimeStamp(),  cmailer_email.sorter_ByTimeStamp( order=-1 ) ),
         ]
 
         self.association_list = [
         ]
         
         self.itemformat_list = [
-            #( u"1 : 全て表示 : filename  .ext  99.9K YY/MM/DD HH:MM:SS",     cmailer_filelist.itemformat_Name_Ext_Size_YYMMDD_HHMMSS ),
-            #( u"2 : 秒を省略 : filename  .ext  99.9K YY/MM/DD HH:MM",        cmailer_filelist.itemformat_Name_Ext_Size_YYMMDD_HHMM ),
-            #( u"0 : 名前のみ : filename.ext",                                cmailer_filelist.itemformat_NameExt ),
+            #( u"1 : 全て表示 : filename  .ext  99.9K YY/MM/DD HH:MM:SS",     cmailer_email.itemformat_Name_Ext_Size_YYMMDD_HHMMSS ),
+            #( u"2 : 秒を省略 : filename  .ext  99.9K YY/MM/DD HH:MM",        cmailer_email.itemformat_Name_Ext_Size_YYMMDD_HHMM ),
+            #( u"0 : 名前のみ : filename.ext",                                cmailer_email.itemformat_NameExt ),
         ]
         
-        #self.itemformat = cmailer_filelist.itemformat_Name_Ext_Size_YYMMDD_HHMMSS
+        #self.itemformat = cmailer_email.itemformat_Name_Ext_Size_YYMMDD_HHMMSS
 
         self.commandline_list = [
             self.launcher,
@@ -2168,8 +2148,6 @@ class MainWindow( ckit.Window ):
             self.ini.set( "GEOMETRY", "height", str(32) )
         if not self.ini.has_option( "GEOMETRY", "log_window_height" ):
             self.ini.set( "GEOMETRY", "log_window_height", str(10) )
-        if not self.ini.has_option( "GEOMETRY", "left_window_width" ):
-            self.ini.set( "GEOMETRY", "left_window_width", str( (self.ini.getint( "GEOMETRY", "width" )-1)/2 ) )
 
         if not self.ini.has_option( "FONT", "name" ):
             self.ini.set( "FONT", "name", "" )
@@ -2283,7 +2261,6 @@ class MainWindow( ckit.Window ):
             self.ini.set( "GEOMETRY", "width", str(normal_size[0]) )
             self.ini.set( "GEOMETRY", "height", str(normal_size[1]) )
             self.ini.set( "GEOMETRY", "log_window_height", str(self.log_window_height) )
-            self.ini.set( "GEOMETRY", "left_window_width", str(self.left_window_width) )
 
             #self.left_pane.history.save( self.ini, "LEFTPANE" )
 
@@ -2314,25 +2291,11 @@ class MainWindow( ckit.Window ):
 
     #--------------------------------------------------------------------------
 
-    def startup( self, left_location=None, right_location=None ):
+    def startup(self):
 
         print cmailer_resource.startupString()
 
-        """
-        # 左ペインの初期位置
-        if left_location:
-            location = left_location
-        else:
-            last_history = self.left_pane.history.findLastVisible()
-            if last_history:
-                location = last_history[0]
-            else:
-                location = os.getcwdu()
-        try:
-            self.jumpLister( self.left_pane, cmailer_filelist.lister_Default(self,location), raise_error=True )
-        except:
-            self.jumpLister( self.left_pane, cmailer_filelist.lister_Default(self,os.getcwd()) )
-        """
+        self.jumpLister( self.left_pane, cmailer_email.lister_Default(self,os.getcwd()) )
 
     #--------------------------------------------------------------------------
 
@@ -2897,7 +2860,7 @@ class MainWindow( ckit.Window ):
             print u"ERROR : ファイルパスはUNICODE形式である必要があります."
             return
 
-        self.jumpLister( pane, cmailer_filelist.lister_Default(self,newdirname) )
+        self.jumpLister( pane, cmailer_email.lister_Default(self,newdirname) )
 
     ## 履歴リストを表示しジャンプする
     def command_JumpHistory(self):
@@ -2950,7 +2913,7 @@ class MainWindow( ckit.Window ):
 
         pane = self.activePane()
 
-        self.jumpLister( pane, cmailer_filelist.lister_Default(self,newdirname) )
+        self.jumpLister( pane, cmailer_email.lister_Default(self,newdirname) )
 
     ## パスを入力しジャンプする
     def command_JumpInput(self):
@@ -2976,7 +2939,7 @@ class MainWindow( ckit.Window ):
         else:
             dirname, filename = ckit.splitPath(path)
 
-        self.jumpLister( pane, cmailer_filelist.lister_Default(self,dirname), filename )
+        self.jumpLister( pane, cmailer_email.lister_Default(self,dirname), filename )
 
     ## SearchやGrepの検索結果リストを表示しジャンプする
     def command_JumpFound(self):
@@ -3021,7 +2984,7 @@ class MainWindow( ckit.Window ):
 
         # Shift-Enter で決定したときは、ファイルリストに反映させる
         if mod==MODKEY_SHIFT:
-            new_lister = cmailer_filelist.lister_Custom( self, pane.found_prefix, pane.found_location, pane.found_items )
+            new_lister = cmailer_email.lister_Custom( self, pane.found_prefix, pane.found_location, pane.found_items )
             pane.file_list.setLister( new_lister )
             pane.file_list.applyItems()
             pane.scroll_info = ckit.ScrollInfo()
@@ -3038,7 +3001,7 @@ class MainWindow( ckit.Window ):
             else:
                 dirname, filename = ckit.splitPath(path)
 
-            self.jumpLister( pane, cmailer_filelist.lister_Default(self,dirname), filename )
+            self.jumpLister( pane, cmailer_email.lister_Default(self,dirname), filename )
 
     ## 入力した名前でディレクトリを作成する
     #
@@ -3129,7 +3092,7 @@ class MainWindow( ckit.Window ):
 
         if drive_letter=='1':
             newdirname = ckit.getDesktopPath()
-            lister = cmailer_filelist.lister_Default(self,newdirname)
+            lister = cmailer_email.lister_Default(self,newdirname)
 
         else:
             history_item = pane.history.findStartWith( "%s:" % drive_letter )
@@ -3137,7 +3100,7 @@ class MainWindow( ckit.Window ):
                 newdirname = "%s:\\" % drive_letter
             else:
                 newdirname = history_item[0]
-            lister = cmailer_filelist.lister_Default(self,newdirname)
+            lister = cmailer_email.lister_Default(self,newdirname)
             
         # 見つかるまで親ディレクトリを遡る
         def setListerAndGetParent(lister):
@@ -3401,7 +3364,7 @@ class MainWindow( ckit.Window ):
                 if type(filename)==type(''):
                     filename = unicode(filename,'mbcs')
 
-                item = cmailer_filelist.item_Default(
+                item = cmailer_email.item_Default(
                     location,
                     filename
                     )
@@ -3447,7 +3410,7 @@ class MainWindow( ckit.Window ):
             if not result[0] : return
 
             prefix = u"[search] "
-            new_lister = cmailer_filelist.lister_Custom( self, prefix, location, items )
+            new_lister = cmailer_email.lister_Custom( self, prefix, location, items )
             pane.file_list.setLister( new_lister )
             pane.file_list.applyItems()
             pane.scroll_info = ckit.ScrollInfo()
@@ -3526,7 +3489,7 @@ class MainWindow( ckit.Window ):
                     if job_item.waitPaused():
                         self.setProgressValue(None)
 
-                    if item_filter==None or item_filter( cmailer_filelist.item_Default(root,filename) ):
+                    if item_filter==None or item_filter( cmailer_email.item_Default(root,filename) ):
 
                         fullpath = os.path.join( root, filename )
                         
@@ -3567,7 +3530,7 @@ class MainWindow( ckit.Window ):
                 if type(filename)==type(''):
                     filename = unicode(filename,'mbcs')
 
-                item = cmailer_filelist.item_Default(
+                item = cmailer_email.item_Default(
                     location,
                     filename
                     )
@@ -3613,7 +3576,7 @@ class MainWindow( ckit.Window ):
             if not result[0] : return
 
             prefix = u"[grep] "
-            new_lister = cmailer_filelist.lister_Custom( self, prefix, location, items )
+            new_lister = cmailer_email.lister_Custom( self, prefix, location, items )
             pane.file_list.setLister( new_lister )
             pane.file_list.applyItems()
             pane.scroll_info = ckit.ScrollInfo()
@@ -3782,7 +3745,7 @@ class MainWindow( ckit.Window ):
         
         self.pattern_history.append(result)
 
-        self.subThreadCall( pane.file_list.setFilter, (cmailer_filelist.filter_Default( result, dir_policy=True ),) )
+        self.subThreadCall( pane.file_list.setFilter, (cmailer_email.filter_Default( result, dir_policy=True ),) )
         pane.file_list.applyItems()
         pane.scroll_info = ckit.ScrollInfo()
         pane.cursor = self.cursorFromHistory( pane.file_list, pane.history )
@@ -3820,7 +3783,7 @@ class MainWindow( ckit.Window ):
 
         self.pattern_history.append(result)
 
-        file_filter = cmailer_filelist.filter_Default( result, dir_policy=None )
+        file_filter = cmailer_email.filter_Default( result, dir_policy=None )
         for i in xrange(pane.file_list.numItems()):
             item = pane.file_list.getItem(i)
             if file_filter(item):
@@ -3850,12 +3813,6 @@ class MainWindow( ckit.Window ):
                 pane.file_list.selectItem( i, True )
 
         self.paint( PAINT_FOCUSED_ITEMS | PAINT_FOCUSED_HEADER )
-
-    ## 比較機能の選択リストを表示する
-    def command_CompareTools(self):
-        result = cmailer_listwindow.popMenu( self, u"比較ツール", self.compare_tool_list, 0 )
-        if result<0 : return
-        self.compare_tool_list[result][1]()
 
     ## ソートポリシーを設定する
     def command_SetSorter(self):
@@ -4585,7 +4542,7 @@ class MainWindow( ckit.Window ):
         self.bookmark.append(fullpath)
         dirname, filename = ckit.splitPath(fullpath)
 
-        self.jumpLister( pane, cmailer_filelist.lister_Default(self,dirname), filename )
+        self.jumpLister( pane, cmailer_email.lister_Default(self,dirname), filename )
 
     ## ブックマークの一覧を表示する(グローバル)
     #
