@@ -1,13 +1,19 @@
 cmailer.py
+cmailer_commandline.py
 cmailer_debug.py
 cmailer_email.py
+cmailer_history.py
+cmailer_isearch.py
+cmailer_listwindow.py
 cmailer_main.py
 cmailer_mainwindow.py
 cmailer_misc.py
+cmailer_msgbox.py
 cmailer_resource.py
 cmailer_statusbar.py
 cmailer_stdlib.py
 cmailer_usernamespace.py
+cmailer_wallpaper.py
 makefile.py
 
 cmailer_native/cmailer_native.cpp
