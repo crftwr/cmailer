@@ -32,7 +32,6 @@ import cmailer_listwindow
 import cmailer_isearch
 import cmailer_msgbox
 import cmailer_statusbar
-import cmailer_usernamespace
 import cmailer_commandline
 import cmailer_history
 import cmailer_debug
@@ -1987,8 +1986,8 @@ class MainWindow( ckit.Window ):
             ( u"_RefererTree",     self.command_RefererTree ),
         ]
         
-        cmailer_usernamespace.reload( self.config_filename )
-        cmailer_usernamespace.call("configure",self)
+        ckit.reloadConfigScript( self.config_filename )
+        ckit.callConfigFunc("configure",self)
 
     def loadState(self):
 

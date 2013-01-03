@@ -9,7 +9,6 @@ import cmailer_isearch
 import cmailer_statusbar
 import cmailer_misc
 import cmailer_wallpaper
-import cmailer_usernamespace
 
 ## @addtogroup listwindow リストウインドウ機能
 ## @{
@@ -161,7 +160,7 @@ class ListWindow( ckit.Window ):
         self.keymap[ "Escape" ] = self.command_Cancel
         if not self.onekey_search:
             self.keymap[ "F" ] = self.command_IncrementalSearch
-        cmailer_usernamespace.call("configure_ListWindow",self)
+        ckit.callConfigFunc("configure_ListWindow",self)
 
     ## リストの項目を１つ削除する
     #
