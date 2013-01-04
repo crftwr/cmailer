@@ -754,7 +754,7 @@ class MainWindow( ckit.Window ):
             self.plane_commandline.show(False)
 
         self.setCursorPos( -1, -1 )
-        self.updateThemePosSize()
+        self.updatePaneRect()
 
         self.paint(PAINT_STATUS_BAR)
         
@@ -784,7 +784,7 @@ class MainWindow( ckit.Window ):
         if self.log_window_height<0 : self.log_window_height=0
         self.upper_pane.scroll_info.makeVisible( self.upper_pane.cursor, self.fileListItemPaneHeight(), 1 )
 
-        self.updateThemePosSize()
+        self.updatePaneRect()
         
         if self.wallpaper:
             self.wallpaper.adjust()
@@ -804,17 +804,27 @@ class MainWindow( ckit.Window ):
         if pane.file_list.selected():
             selected = 1
 
-        try:
-            func = self.keymap.table[ ckit.KeyEvent(vk,mod,extra=selected) ]
-        except KeyError:
-            return
-
         if not self.acquireUserInputOwnership(False) : return
         try:
-            if self.profile:
-                cProfile.runctx( "func()", globals(), locals() )
-            else:
-                func()
+            # アクティブなTextWidgetのキー処理
+            if pane.edit.visible:
+                result = [None]
+                if self.profile:
+                    cProfile.runctx( "result[0] = pane.edit.onKeyDown( vk, mod )", globals(), locals() )
+                else:
+                    result[0] = pane.edit.onKeyDown( vk, mod )
+                if result[0]:
+                    return result[0]
+
+            # メインウインドウのキー処理
+            try:
+                func = self.keymap.table[ ckit.KeyEvent(vk,mod,extra=selected) ]
+                if self.profile:
+                    cProfile.runctx( "func()", globals(), locals() )
+                else:
+                    func()
+            except KeyError:
+                pass
         finally:
             self.releaseUserInputOwnership()
 
@@ -833,6 +843,23 @@ class MainWindow( ckit.Window ):
         if self.char_hook:
             if self.char_hook( ch, mod ):
                 return
+
+        if not self.acquireUserInputOwnership(False) : return
+        try:
+
+            # アクティブなTextEditWidgetの文字入力処理
+            if pane.edit.visible:
+                result = [None]
+                if self.profile:
+                    cProfile.runctx( "result[0] = pane.edit.onChar( ch, mod )", globals(), locals() )
+                else:
+                    result[0] = pane.edit.onChar( ch, mod )
+                if result[0]:
+                    return result[0]
+
+        finally:
+            self.releaseUserInputOwnership()
+
 
     def _onLeftButtonDownOutside( self, x, y, mod ):
         if not self.acquireUserInputOwnership(False) : return
@@ -905,6 +932,8 @@ class MainWindow( ckit.Window ):
 
         char_x = (x-offset_x) / char_w
         char_y = (y-offset_y) / char_h
+        sub_x = float( (x-offset_x) - char_x * char_w ) / char_w
+        sub_y = float( (y-offset_y) - char_y * char_h ) / char_h
         
         upper_pane_rect = list( self.leftPaneRect() )
         log_pane_rect = list( self.logPaneRect() )
@@ -929,7 +958,7 @@ class MainWindow( ckit.Window ):
             pane = self.log_pane
             pane_rect = log_pane_rect
 
-        return [ char_x, char_y, region, pane, pane_rect ]
+        return [ char_x, char_y, sub_x, sub_y, region, pane, pane_rect ]
 
     def _charPosToLogPos( self, char_x, char_y ):
         
@@ -969,24 +998,27 @@ class MainWindow( ckit.Window ):
 
         active_pane_prev = self.activePane()
 
-        char_x, char_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
+        char_x, char_y, sub_x, sub_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
 
         if region==PAINT_LEFT_ITEMS:
-
-            if self.ini.getint( "MISC", "mouse_operation" ):
-
+        
+            if pane.edit.visible:
+                pane.edit.onLeftButtonDown( char_x, char_y, sub_x, sub_y, mod )
+                self.setCapture()
+                self.mouse_click_info = MouseInfo( "edit", x=x, y=y, mod=mod, pane=pane )
+            else:
                 item_index = char_y-pane_rect[1]+pane.scroll_info.pos
                 if item_index<pane.file_list.numItems():
-                
+            
                     item = pane.file_list.getItem(item_index)
-                
+            
                     if mod & MODKEY_SHIFT and active_pane_prev==self.activePane():
                         while 1:
                             pane.file_list.selectItem( pane.cursor, True )
                             if item_index>pane.cursor : pane.cursor+=1
                             elif item_index<pane.cursor : pane.cursor-=1
                             else : break
-                
+            
                     elif not (mod & MODKEY_CTRL):
                         if not item.selected():
                             for i in xrange(pane.file_list.numItems()):
@@ -996,10 +1028,10 @@ class MainWindow( ckit.Window ):
 
                     self.paint( PAINT_FOCUSED_ITEMS | PAINT_FOCUSED_HEADER )
 
-            # ドラッグ＆ドロップの準備
-            dnd_items = []
+                # ドラッグ＆ドロップの準備
+                dnd_items = []
 
-            self.mouse_click_info = MouseInfo( "item", x=x, y=y, mod=mod, dnd_items=dnd_items )
+                self.mouse_click_info = MouseInfo( "item", x=x, y=y, mod=mod, dnd_items=dnd_items )
 
         elif region==PAINT_LOG:
             
@@ -1023,32 +1055,36 @@ class MainWindow( ckit.Window ):
 
         if self.mouse_click_info==None : return
         
-        if self.mouse_click_info.mode=="item":
+        if self.mouse_click_info.mode=="edit":
+            char_x, char_y, sub_x, sub_y, region, pane, pane_rect = self._mouseCommon( x, y, False )
+            self.mouse_click_info.pane.edit.onLeftButtonUp( char_x, char_y, sub_x, sub_y, mod )
+            self.releaseCapture()
+            self.mouse_click_info = None
+
+        elif self.mouse_click_info.mode=="item":
 
             x, y, mod = self.mouse_click_info.x, self.mouse_click_info.y, self.mouse_click_info.mod
             self.mouse_click_info = None
 
-            char_x, char_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
+            char_x, char_y, sub_x, sub_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
 
             if region==PAINT_LEFT_ITEMS:
 
-                if self.ini.getint( "MISC", "mouse_operation" ):
-        
-                    # 選択を解除
-                    if not (mod & (MODKEY_CTRL|MODKEY_SHIFT)):
-                        for i in xrange(pane.file_list.numItems()):
-                            pane.file_list.selectItem( i, False )
+                # 選択を解除
+                if not (mod & (MODKEY_CTRL|MODKEY_SHIFT)):
+                    for i in xrange(pane.file_list.numItems()):
+                        pane.file_list.selectItem( i, False )
 
-                    # カーソル移動とアイテム選択
-                    item_index = char_y-pane_rect[1]+pane.scroll_info.pos
-                    if item_index<pane.file_list.numItems():
-                        pane.cursor = item_index
-                        if mod & MODKEY_CTRL:
-                            pane.file_list.selectItem(pane.cursor)
-                        else:
-                            pane.file_list.selectItem(pane.cursor,True)
+                # カーソル移動とアイテム選択
+                item_index = char_y-pane_rect[1]+pane.scroll_info.pos
+                if item_index<pane.file_list.numItems():
+                    pane.cursor = item_index
+                    if mod & MODKEY_CTRL:
+                        pane.file_list.selectItem(pane.cursor)
+                    else:
+                        pane.file_list.selectItem(pane.cursor,True)
 
-                    self.paint( PAINT_FOCUSED_ITEMS | PAINT_FOCUSED_HEADER )
+                self.paint( PAINT_FOCUSED_ITEMS | PAINT_FOCUSED_HEADER )
 
         elif self.mouse_click_info.mode in ( "log", "log_double_click" ):
             self.mouse_click_info=None
@@ -1062,12 +1098,15 @@ class MainWindow( ckit.Window ):
 
         self.mouse_click_info=None
 
-        char_x, char_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
+        char_x, char_y, sub_x, sub_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
 
         if region==PAINT_LEFT_ITEMS:
-
-            if self.ini.getint( "MISC", "mouse_operation" ):
-
+        
+            if pane.edit.visible:
+                pane.edit.onLeftButtonDoubleClick( char_x, char_y, sub_x, sub_y, mod )
+                self.setCapture()
+                self.mouse_click_info = MouseInfo( "edit", x=x, y=y, mod=mod, pane=pane )
+            else:
                 item_index = char_y-pane_rect[1]+pane.scroll_info.pos
                 if item_index<pane.file_list.numItems():
                     pane.cursor = item_index
@@ -1102,7 +1141,7 @@ class MainWindow( ckit.Window ):
 
         self.mouse_click_info=None
 
-        char_x, char_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
+        char_x, char_y, sub_x, sub_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
 
     def _onMiddleButtonUp( self, x, y, mod ):
         #print "_onMiddleButtonUp", x, y
@@ -1118,12 +1157,14 @@ class MainWindow( ckit.Window ):
 
         self.mouse_click_info=None
 
-        char_x, char_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
+        char_x, char_y, sub_x, sub_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
 
         if region==PAINT_LEFT_ITEMS:
 
-            if self.ini.getint( "MISC", "mouse_operation" ):
-
+            if pane.edit.visible:
+                pane.edit.onRightButtonDown( char_x, char_y, sub_x, sub_y, mod )
+                self.mouse_click_info = MouseInfo( "edit", x=x, y=y, mod=mod, pane=pane )
+            else:
                 item_index = char_y-pane_rect[1]+pane.scroll_info.pos
                 if item_index<pane.file_list.numItems():
                     pane.cursor = item_index
@@ -1138,7 +1179,7 @@ class MainWindow( ckit.Window ):
                         pane.file_list.selectItem( i, False )
                     self.paint( PAINT_FOCUSED_ITEMS | PAINT_FOCUSED_HEADER )
 
-            self.mouse_click_info = MouseInfo( "item", x=x, y=y, mod=mod, dnd_items=[] )
+                self.mouse_click_info = MouseInfo( "item", x=x, y=y, mod=mod, dnd_items=[] )
 
         elif region==PAINT_LEFT_LOCATION:
             self.mouse_click_info = MouseInfo( "item", x=x, y=y, mod=mod, dnd_items=[] )
@@ -1150,19 +1191,21 @@ class MainWindow( ckit.Window ):
         if self.mouse_event_mask : return
 
         if self.mouse_click_info==None : return
-        if self.mouse_click_info.mode!="item" :
+
+        if self.mouse_click_info.mode=="edit":
+            char_x, char_y, sub_x, sub_y, region, pane, pane_rect = self._mouseCommon( x, y, False )
+            self.mouse_click_info.pane.edit.onRightButtonUp( char_x, char_y, sub_x, sub_y, mod )
             self.mouse_click_info=None
-            return
-        x, y, mod = self.mouse_click_info.x, self.mouse_click_info.y, self.mouse_click_info.mod
-        self.mouse_click_info = None
 
-        char_x, char_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
+        elif self.mouse_click_info.mode=="item":
+            x, y, mod = self.mouse_click_info.x, self.mouse_click_info.y, self.mouse_click_info.mod
+            self.mouse_click_info = None
 
-        if region==PAINT_LEFT_ITEMS:
-            if self.ini.getint( "MISC", "mouse_operation" ):
+            char_x, char_y, sub_x, sub_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
+
+            if region==PAINT_LEFT_ITEMS:
                 self.command.ContextMenu()
-        elif region==PAINT_LEFT_LOCATION:
-            if self.ini.getint( "MISC", "mouse_operation" ):
+            elif region==PAINT_LEFT_LOCATION:
                 self.command.ContextMenuDir()
 
     def _onMouseMove( self, x, y, mod ):
@@ -1170,9 +1213,14 @@ class MainWindow( ckit.Window ):
         
         if self.mouse_event_mask : return
 
+        char_x, char_y, sub_x, sub_y, region, pane, pane_rect = self._mouseCommon( x, y, False )
+
         if self.mouse_click_info==None : return
         
-        if self.mouse_click_info.mode=="item":
+        if self.mouse_click_info.mode=="edit":
+            self.mouse_click_info.pane.edit.onMouseMove( char_x, char_y, sub_x, sub_y, mod )
+        
+        elif self.mouse_click_info.mode=="item":
         
             if abs(self.mouse_click_info.x-x)>8 or abs(self.mouse_click_info.y-y)>8:
                 if len(self.mouse_click_info.dnd_items)>0:
@@ -1180,7 +1228,7 @@ class MainWindow( ckit.Window ):
                 self.mouse_click_info = None
 
         elif self.mouse_click_info.mode in ( "log", "log_double_click" ):
-            char_x, char_y, region, pane, pane_rect = self._mouseCommon( x, y, False )
+            char_x, char_y, sub_x, sub_y, region, pane, pane_rect = self._mouseCommon( x, y, False )
             
             log_pane_rect = list( self.logPaneRect() )
             if char_y < log_pane_rect[1]:
@@ -1215,22 +1263,26 @@ class MainWindow( ckit.Window ):
         if self.mouse_event_mask : return
         
         x, y = self.screenToClient( x, y )
-        char_x, char_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
+        char_x, char_y, sub_x, sub_y, region, pane, pane_rect = self._mouseCommon( x, y, True )
 
         if region!=None and region&PAINT_UPPER:
         
-            self.mouse_click_info=None
+            if pane.edit.visible:
+                pane.edit.onMouseWheel( char_x, char_y, sub_x, sub_y, wheel, mod )
+                self.mouse_click_info=None
+            else:
+                self.mouse_click_info=None
         
-            while wheel>0:
-                self.command.ScrollUp()
-                self.command.ScrollUp()
-                self.command.ScrollUp()
-                wheel-=1
-            while wheel<0:
-                self.command.ScrollDown()
-                self.command.ScrollDown()
-                self.command.ScrollDown()
-                wheel+=1
+                while wheel>0:
+                    self.command.ScrollUp()
+                    self.command.ScrollUp()
+                    self.command.ScrollUp()
+                    wheel-=1
+                while wheel<0:
+                    self.command.ScrollDown()
+                    self.command.ScrollDown()
+                    self.command.ScrollDown()
+                    wheel+=1
 
         elif region==PAINT_LOG:
             while wheel>0:
@@ -1645,9 +1697,11 @@ class MainWindow( ckit.Window ):
         self.plane_isearch.show(False)
         self.plane_commandline.show(False)
 
+        self.upper_pane.edit.createThemePlane()
+
         self.theme_enabled = True
 
-        self.updateThemePosSize()
+        self.updatePaneRect()
         
     def destroyThemePlane(self):
         self.plane_header.destroy()
@@ -1655,19 +1709,32 @@ class MainWindow( ckit.Window ):
         self.plane_isearch.destroy()
         self.plane_statusbar.destroy()
         self.plane_commandline.destroy()
+
+        self.upper_pane.edit.destroyThemePlane()
+
         self.theme_enabled = False
 
-    def updateThemePosSize(self):
+    def updatePaneRect(self):
 
-        if not self.theme_enabled : return
+        if 1:
+            rect = self.leftPaneRect()
 
-        client_rect = self.getClientRect()
-        offset_x, offset_y = self.charToClient( 0, 0 )
-        char_w, char_h = self.getCharSize()
+            x = rect[0]
+            y = rect[1]
+            width = rect[2]-rect[0]
+            height = rect[3]-rect[1]
 
-        self.plane_header.setPosSize(                0,                                        1*char_h+offset_y,                                           client_rect[2],        char_h )
-        self.plane_footer.setPosSize(                0,                                        (self.height()-self.log_window_height-2)*char_h+offset_y,    client_rect[2],        char_h )
-        self.plane_statusbar.setPosSize(             0,                                        (self.height()-1)*char_h+offset_y,                           client_rect[2],        client_rect[3]-((self.height()-1)*char_h+offset_y) )
+            self.upper_pane.edit.setPosSize( x, y+2, width, height-3 )
+
+        if self.theme_enabled:
+
+            client_rect = self.getClientRect()
+            offset_x, offset_y = self.charToClient( 0, 0 )
+            char_w, char_h = self.getCharSize()
+
+            self.plane_header.setPosSize(                0,                                        1*char_h+offset_y,                                           client_rect[2],        char_h )
+            self.plane_footer.setPosSize(                0,                                        (self.height()-self.log_window_height-2)*char_h+offset_y,    client_rect[2],        char_h )
+            self.plane_statusbar.setPosSize(             0,                                        (self.height()-1)*char_h+offset_y,                           client_rect[2],        client_rect[3]-((self.height()-1)*char_h+offset_y) )
 
     #--------------------------------------------------------------------------
 
@@ -1746,7 +1813,10 @@ class MainWindow( ckit.Window ):
             if option & PAINT_LEFT_HEADER and height>=2 :
                 self._paintFileListHeaderInfo( x, y+1, width, 1, self.upper_pane.file_list )
             if option & PAINT_LEFT_ITEMS and height>=4 :
-                self._paintFileListItems( x, y+2, width, height-3, self.upper_pane.file_list, self.upper_pane.scroll_info, cursor )
+                if self.upper_pane.edit.visible:
+                    self.upper_pane.edit.paint()
+                else:
+                    self._paintFileListItems( x, y+2, width, height-3, self.upper_pane.file_list, self.upper_pane.scroll_info, cursor )
             if option & PAINT_LEFT_FOOTER and height>=1 :
                 if self.upper_pane.footer_paint_hook:
                     self.upper_pane.footer_paint_hook( x, y+height-1, width, 1, self.upper_pane.file_list )
@@ -2015,6 +2085,11 @@ class MainWindow( ckit.Window ):
         ckit.reloadConfigScript( self.config_filename )
         ckit.callConfigFunc("configure",self)
 
+        ckit.TextMode.staticconfigure(self)
+
+        self.upper_pane.edit.configure()
+
+
     def loadState(self):
 
         try:
@@ -2082,32 +2157,12 @@ class MainWindow( ckit.Window ):
             pass
 
         try:
-            self.ini.add_section("BATCHRENAME")
-        except ConfigParser.DuplicateSectionError:
-            pass
-
-        try:
             self.ini.add_section("BOOKMARK")
         except ConfigParser.DuplicateSectionError:
             pass
 
         try:
             self.ini.add_section("COMMANDLINE")
-        except ConfigParser.DuplicateSectionError:
-            pass
-
-        try:
-            self.ini.add_section("SPLIT")
-        except ConfigParser.DuplicateSectionError:
-            pass
-
-        try:
-            self.ini.add_section("UPDATE")
-        except ConfigParser.DuplicateSectionError:
-            pass
-
-        try:
-            self.ini.add_section("DRIVES")
         except ConfigParser.DuplicateSectionError:
             pass
 
@@ -2168,23 +2223,6 @@ class MainWindow( ckit.Window ):
         if not self.ini.has_option( "GREP", "ignorecase" ):
             self.ini.set( "GREP", "ignorecase", str(1) )
 
-        if not self.ini.has_option( "BATCHRENAME", "old" ):
-            self.ini.set( "BATCHRENAME", "old", "" )
-        if not self.ini.has_option( "BATCHRENAME", "new" ):
-            self.ini.set( "BATCHRENAME", "new", "" )
-        if not self.ini.has_option( "BATCHRENAME", "regexp" ):
-            self.ini.set( "BATCHRENAME", "regexp", str(0) )
-        if not self.ini.has_option( "BATCHRENAME", "ignorecase" ):
-            self.ini.set( "BATCHRENAME", "ignorecase", str(1) )
-
-        if not self.ini.has_option( "SPLIT", "size" ):
-            self.ini.set( "SPLIT", "size", "100M" )
-
-        if not self.ini.has_option( "UPDATE", "check_frequency" ):
-            self.ini.set( "UPDATE", "check_frequency", "1000000" )
-        if not self.ini.has_option( "UPDATE", "last_checked_date" ):
-            self.ini.set( "UPDATE", "last_checked_date", "0" )
-
         if not self.ini.has_option( "ACCOUNT", "server" ):
             self.ini.set( "ACCOUNT", "server", "" )
         if not self.ini.has_option( "ACCOUNT", "port" ):
@@ -2200,8 +2238,6 @@ class MainWindow( ckit.Window ):
             self.ini.set( "MISC", "default_keymap", "106" )
         if not self.ini.has_option( "MISC", "esc_action" ):
             self.ini.set( "MISC", "esc_action", "none" )
-        if not self.ini.has_option( "MISC", "mouse_operation" ):
-            self.ini.set( "MISC", "mouse_operation", "1" )
         if not self.ini.has_option( "MISC", "isearch_type" ):
             self.ini.set( "MISC", "isearch_type", "strict" )
         if not self.ini.has_option( "MISC", "directory_separator" ):
@@ -2531,7 +2567,7 @@ class MainWindow( ckit.Window ):
         if self.log_pane.scroll_info.pos>self.log_pane.log.numLines()-self.logPaneHeight() : self.log_pane.scroll_info.pos=self.log_pane.log.numLines()-self.logPaneHeight()
         if self.log_pane.scroll_info.pos<0 : self.log_pane.scroll_info.pos=0
 
-        self.updateThemePosSize()
+        self.updatePaneRect()
         self.paint()
 
     ## 上下のペインを分離するセパレータを下方向に動かす
@@ -2545,7 +2581,7 @@ class MainWindow( ckit.Window ):
         if self.log_pane.scroll_info.pos>self.log_pane.log.numLines()-self.logPaneHeight() : self.log_pane.scroll_info.pos=self.log_pane.log.numLines()-self.logPaneHeight()
         if self.log_pane.scroll_info.pos<0 : self.log_pane.scroll_info.pos=0
 
-        self.updateThemePosSize()
+        self.updatePaneRect()
         self.paint()
 
     ## 上下のペインを分離するセパレータを上方向に高速に動かす
@@ -2570,7 +2606,7 @@ class MainWindow( ckit.Window ):
         if self.log_pane.scroll_info.pos>self.log_pane.log.numLines()-self.logPaneHeight() : self.log_pane.scroll_info.pos=self.log_pane.log.numLines()-self.logPaneHeight()
         if self.log_pane.scroll_info.pos<0 : self.log_pane.scroll_info.pos=0
 
-        self.updateThemePosSize()
+        self.updatePaneRect()
         self.paint()
 
     ## 上下のペインを分離するセパレータを下方向に高速に動かす
@@ -2596,7 +2632,7 @@ class MainWindow( ckit.Window ):
         if self.log_pane.scroll_info.pos>self.log_pane.log.numLines()-self.logPaneHeight() : self.log_pane.scroll_info.pos=self.log_pane.log.numLines()-self.logPaneHeight()
         if self.log_pane.scroll_info.pos<0 : self.log_pane.scroll_info.pos=0
 
-        self.updateThemePosSize()
+        self.updatePaneRect()
         self.paint()
 
     ## カーソル位置のアイテムに対して、メーラ内で関連付けられたデフォルトの動作を実行する
@@ -2619,7 +2655,6 @@ class MainWindow( ckit.Window ):
                 return True
 
         pane = self.activePane()
-        location = pane.file_list.getLocation()
         item = pane.file_list.getItem(pane.cursor)
 
         ext = os.path.splitext(item.name)[1].lower()
@@ -2631,7 +2666,7 @@ class MainWindow( ckit.Window ):
                     return
 
         else:
-            self._viewCommon( location, item )
+            self._viewCommon(item)
 
 
     ## カーソル位置のアイテムに対して、OSで関連付けられた処理を実行する
@@ -3397,39 +3432,26 @@ class MainWindow( ckit.Window ):
 
         self.quit()
 
-    ## 次のCraftMailerに切り替える
-    def command_ActivateCmailerNext( self, info ):
-    
-        desktop = pyauto.Window.getDesktop()
-        wnd = desktop.getFirstChild()
-        last_found = None
-        while wnd:
-            if wnd.getClassName()=="CmailerWindowClass":
-                last_found = wnd
-            wnd = wnd.getNext()
-        if last_found:
-            wnd = last_found.getLastActivePopup()
-            wnd.setForeground()
+    def _viewCommon( self, item ):
+        if hasattr(item,"openBody"):
+            fd = item.openBody()
+            s = fd.read()
+            
+            print s
 
-    def _viewCommon( self, location, item ):
-        if hasattr(item,"open"):
+            edit = self.upper_pane.edit
+            begin = edit.pointDocumentBegin()
+            end = edit.pointDocumentEnd()
+            edit.modifyText( begin, end, s, append_undo=False, ignore_readonly=True )
+            edit.show(True)
 
-            if item.size() >= 32*1024*1024:
-                result = cmailer_msgbox.popMessageBox( self, MessageBox.TYPE_YESNO, u"大きなファイルの閲覧", u"大きなファイルを閲覧しますか？(時間がかかる場合があります)" )
-                if result!=MessageBox.RESULT_YES : return
-
-            def onEdit():
-                pass
-
-            pos = self.centerOfWindowInPixel()
-            viewer = cmailer_textviewer.TextViewer( pos[0], pos[1], self.width(), self.height(), self, self.ini, u"text viewer", item, edit_handler=onEdit )
+            self.paint(PAINT_LEFT)
 
     ## テキストビューアまたはバイナリビューアでファイルを閲覧する
     def command_View( self, info ):
         pane = self.activePane()
-        location = pane.file_list.getLocation()
         item = pane.file_list.getItem(pane.cursor)
-        self._viewCommon( location, item )
+        self._viewCommon( item )
 
     ## ログペインの選択範囲またはアイテムのファイル名をクリップボードにコピーする
     #

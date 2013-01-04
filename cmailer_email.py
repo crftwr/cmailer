@@ -2,6 +2,7 @@
 #import copy
 import fnmatch
 import threading
+import StringIO
 
 import email.parser
 import mailbox
@@ -277,6 +278,18 @@ class item_Email(item_Base):
 
         s = itemformat( window, self, width, userdata )
         window.putString( x, y, width, 1, attr, s )
+
+    def openBody(self):
+        if self.message.is_multipart():
+            s = self.message.get_payload(0,decode=True)
+            print s
+        else:
+            s = self.message.get_payload(decode=True)
+            print s
+            
+        if s==None: s = u"ABC\nDEF\nGHI"
+        fd = StringIO.StringIO(s)
+        return fd
 
     def delete( self, used_folder_set, schedule_handler, log_writer=None ):
 
