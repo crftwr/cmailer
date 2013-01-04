@@ -12,6 +12,7 @@ import tarfile
 import ConfigParser
 import traceback
 import msvcrt
+import locale
 import StringIO
 
 import pyauto
@@ -2039,6 +2040,67 @@ class MainWindow( ckit.Window ):
             self.keymap[ "S-BackSlash" ] = self.command.ContextMenuDir
             self.keymap[ "Atmark" ] = self.command.SelectUsingFilterList
             self.keymap[ "S-Atmark" ] = self.command.SelectUsingFilter
+        
+        self.keymap[ "Left" ] = self.command.CursorLeft
+        self.keymap[ "Right" ] = self.command.CursorRight
+        self.keymap[ "C-Left" ] = self.command.CursorWordLeft
+        self.keymap[ "C-Right" ] = self.command.CursorWordRight
+        self.keymap[ "Home" ] = ckit.CommandSequence( self.command.CursorLineFirstGraph, self.command.CursorLineBegin )
+        self.keymap[ "End" ] = self.command.CursorLineEnd
+        self.keymap[ "Up" ] = self.command.CursorUp
+        self.keymap[ "Down" ] = self.command.CursorDown
+        self.keymap[ "PageUp" ] = self.command.CursorPageUp
+        self.keymap[ "PageDown" ] = self.command.CursorPageDown
+        self.keymap[ "A-Up" ] = self.command.SeekModifiedOrBookmarkPrev
+        self.keymap[ "A-Down" ] = self.command.SeekModifiedOrBookmarkNext
+        self.keymap[ "C-Home" ] = self.command.CursorDocumentBegin
+        self.keymap[ "C-End" ] = self.command.CursorDocumentEnd
+        self.keymap[ "C-B" ] = self.command.CursorCorrespondingBracket
+
+        self.keymap[ "C-Up" ] = self.command.ScrollUp
+        self.keymap[ "C-Down" ] = self.command.ScrollDown
+        self.keymap[ "C-L" ] = self.command.ScrollCursorCenter
+
+        self.keymap[ "S-Left" ] = self.command.SelectLeft
+        self.keymap[ "S-Right" ] = self.command.SelectRight
+        self.keymap[ "C-S-Left" ] = self.command.SelectWordLeft
+        self.keymap[ "C-S-Right" ] = self.command.SelectWordRight
+        self.keymap[ "S-Home" ] = self.command.SelectLineBegin
+        self.keymap[ "S-End" ] = self.command.SelectLineEnd
+        self.keymap[ "S-Up" ] = self.command.SelectUp
+        self.keymap[ "S-Down" ] = self.command.SelectDown
+        self.keymap[ "S-PageUp" ] = self.command.SelectPageUp
+        self.keymap[ "S-PageDown" ] = self.command.SelectPageDown
+        self.keymap[ "C-S-B" ] = self.command.SelectCorrespondingBracket
+        self.keymap[ "C-S-Home" ] = self.command.SelectDocumentBegin
+        self.keymap[ "C-S-End" ] = self.command.SelectDocumentEnd
+        self.keymap[ "C-A" ] = self.command.SelectDocument
+
+        self.keymap[ "C-S-Up" ] = self.command.SelectScrollUp
+        self.keymap[ "C-S-Down" ] = self.command.SelectScrollDown
+
+        self.keymap[ "Return" ] = ckit.CommandSequence( self.command.Enter, self.command.InsertReturnAutoIndent )
+        self.keymap[ "Tab" ] = ckit.CommandSequence( self.command.IndentSelection, self.command.InsertTab )
+        self.keymap[ "S-Tab" ] = ckit.CommandSequence( self.command.UnindentSelection, self.command.CursorTabLeft )
+        self.keymap[ "Delete" ] = self.command.Delete
+        self.keymap[ "Back" ] = self.command.DeleteCharLeft
+        self.keymap[ "C-Delete" ] = self.command.DeleteWordRight
+        self.keymap[ "C-Back" ] = self.command.DeleteWordLeft
+        self.keymap[ "C-D" ] = self.command.DeleteCharRight
+        self.keymap[ "C-H" ] = self.command.DeleteCharLeft
+        self.keymap[ "C-K" ] = self.command.DeleteLineRight
+        self.keymap[ "C-C" ] = self.command.Copy
+        self.keymap[ "C-X" ] = self.command.Cut
+        self.keymap[ "C-V" ] = self.command.Paste
+        self.keymap[ "C-Z" ] = self.command.Undo
+        self.keymap[ "C-Y" ] = self.command.Redo
+        self.keymap[ "C-N" ] = self.command.SearchNext
+        self.keymap[ "C-S-N" ] = self.command.SearchPrev
+        self.keymap[ "C-Space" ] = self.command.CompleteAbbrev
+
+        self.keymap[ "C-E" ] = self.command.ExtensionMenu
+        self.keymap[ "C-M" ] = self.command.Bookmark1
+        self.keymap[ "Escape" ] = ckit.CommandSequence( self.command.CloseList, self.command.FocusEdit, self.command.SelectCancel )
 
         self.jump_list = [
         ]
@@ -2234,6 +2296,8 @@ class MainWindow( ckit.Window ):
         if not self.ini.has_option( "ACCOUNT", "lastid" ):
             self.ini.set( "ACCOUNT", "lastid", "0" )
 
+        if not self.ini.has_option( "MISC", "locale" ):
+            self.ini.set( "MISC", "locale", locale.getdefaultlocale()[0] )
         if not self.ini.has_option( "MISC", "default_keymap" ):
             self.ini.set( "MISC", "default_keymap", "106" )
         if not self.ini.has_option( "MISC", "esc_action" ):
@@ -2281,6 +2345,7 @@ class MainWindow( ckit.Window ):
         ckit.setGlobalOption( GLOBAL_OPTION_WALKAROUND_KB436093, int(self.ini.get( "MISC", "walkaround_kb436093" )) )
 
         cmailer_resource.cmailer_appname = unicode( self.ini.get( "MISC", "app_name" ), "utf8" )
+        cmailer_resource.setLocale( self.ini.get( "MISC", "locale" ) )
 
     def saveState(self):
 
@@ -3444,6 +3509,7 @@ class MainWindow( ckit.Window ):
             end = edit.pointDocumentEnd()
             edit.modifyText( begin, end, s, append_undo=False, ignore_readonly=True )
             edit.show(True)
+            edit.enableCursor(True)
 
             self.paint(PAINT_LEFT)
 
